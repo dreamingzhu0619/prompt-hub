@@ -148,15 +148,16 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     }
   }, []);
 
-  const handleInsertVariable = (varName) => {
-    const placeholder = `{{${varName}}}`;
+  const handleInsertVariable = (varName, varLabel) => {
+    const insertion = `${varLabel || varName}：{{${varName}}}`;
     const pos = cursorPosRef.current;
     const before = userPrompt.slice(0, pos);
     const after = userPrompt.slice(pos);
-    const newPrompt = before + placeholder + after;
-    setUserPrompt(newPrompt);
-    // Move cursor after inserted text
-    const newPos = pos + placeholder.length;
+    const needNewlineBefore = pos > 0 && before[before.length - 1] !== '\n';
+    const prefix = needNewlineBefore ? '\n' : '';
+    const newText = prefix + insertion;
+    setUserPrompt(before + newText + after);
+    const newPos = pos + newText.length;
     cursorPosRef.current = newPos;
     // Focus and set cursor position after state update
     setTimeout(() => {
@@ -194,13 +195,17 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   const handleAddVariable = () => {
     const draft = createVariableDraft(variables.length);
     setVariables((prev) => [...prev, draft]);
-    // Auto-insert placeholder into user_prompt at cursor position
-    const placeholder = `{{${draft.name}}}`;
+    // Auto-insert "label：{{name}}" into user_prompt at cursor position
+    const insertion = `${draft.label}：{{${draft.name}}}`;
     const pos = cursorPosRef.current;
     const before = userPrompt.slice(0, pos);
     const after = userPrompt.slice(pos);
-    setUserPrompt(before + placeholder + after);
-    cursorPosRef.current = pos + placeholder.length;
+    // Add newline before if cursor is not at start and previous char is not newline
+    const needNewlineBefore = pos > 0 && before[before.length - 1] !== '\n';
+    const prefix = needNewlineBefore ? '\n' : '';
+    const newText = prefix + insertion;
+    setUserPrompt(before + newText + after);
+    cursorPosRef.current = pos + newText.length;
   };
 
   const handleRemoveVariable = (index) => {
@@ -655,7 +660,7 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
 
                     <button
                       type="button"
-                      onClick={() => handleInsertVariable(item.name)}
+                      onClick={() => handleInsertVariable(item.name, item.label)}
                       disabled={!item.name?.trim()}
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
                       title="插入占位符到 User Prompt 光标位置"
