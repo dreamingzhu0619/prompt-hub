@@ -1,5 +1,5 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronUp, Copy, Check, ArrowDownToLine } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 function extractPromptVariables(prompt) {
   const matches = prompt?.match(/{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}/g) || [];
@@ -14,6 +14,11 @@ function createVariableDraft(index = 0) {
     required: false,
   };
 }
+
+const TOOL_OPTIONS = [
+  { id: 'web_search', label: '网络搜索' },
+  { id: 'knowledge_search', label: '知识库检索' },
+];
 
 function SectionCard({ title, description, collapsed, onToggle, actions, children }) {
   return (
@@ -41,7 +46,14 @@ function SectionCard({ title, description, collapsed, onToggle, actions, childre
   );
 }
 
-export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes }) {
+function renderPrompt(template, variableValues) {
+  return template.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (match, key) => {
+    const value = variableValues[key];
+    return value != null && String(value).trim() !== '' ? String(value) : match;
+  });
+}
+
+export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes, variableValues = {} }) {
   const isNew = template && !template.id;
   const [name, setName] = useState(template?.name || '');
   const [scene, setScene] = useState(template?.scene || '');
@@ -50,10 +62,15 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   const [systemPrompt, setSystemPrompt] = useState(template?.system_prompt || '');
   const [userPrompt, setUserPrompt] = useState(template?.user_prompt || '');
   const [variables, setVariables] = useState(template?.variables || []);
+  const [defaultTools, setDefaultTools] = useState(template?.default_tools || []);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [isPromptCollapsed, setIsPromptCollapsed] = useState(false);
   const [isVariableDefinitionCollapsed, setIsVariableDefinitionCollapsed] = useState(false);
+  const [promptViewMode, setPromptViewMode] = useState('edit'); // 'edit' | 'preview'
+  const [copied, setCopied] = useState(false);
+  const userPromptRef = useRef(null);
+  const cursorPosRef = useRef(0);
 
   useEffect(() => {
     setName(template?.name || '');
@@ -63,9 +80,12 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     setSystemPrompt(template?.system_prompt || '');
     setUserPrompt(template?.user_prompt || '');
     setVariables(template?.variables || []);
+    setDefaultTools(template?.default_tools || []);
     setMessage(null);
     setIsPromptCollapsed(false);
     setIsVariableDefinitionCollapsed(false);
+    setPromptViewMode('edit');
+    setCopied(false);
   }, [template]);
 
   if (!template) {
@@ -83,7 +103,8 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     scene !== (template.scene || '') ||
     category !== (template.category || '') ||
     description !== (template.description || '') ||
-    JSON.stringify(variables) !== JSON.stringify(template.variables || []);
+    JSON.stringify(variables) !== JSON.stringify(template.variables || []) ||
+    JSON.stringify(defaultTools) !== JSON.stringify(template.default_tools || []);
 
   const promptVariables = useMemo(() => extractPromptVariables(userPrompt), [userPrompt]);
   const definedVariableNames = useMemo(
@@ -105,6 +126,47 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
 
   const uniqueScenes = Object.keys(sceneCategoriesMap);
   const currentCategories = sceneCategoriesMap[scene] || [];
+
+  const handleUserPromptCursorChange = useCallback(() => {
+    if (userPromptRef.current) {
+      cursorPosRef.current = userPromptRef.current.selectionStart || 0;
+    }
+  }, []);
+
+  const handleInsertVariable = (varName) => {
+    const placeholder = `{{${varName}}}`;
+    const pos = cursorPosRef.current;
+    const before = userPrompt.slice(0, pos);
+    const after = userPrompt.slice(pos);
+    const newPrompt = before + placeholder + after;
+    setUserPrompt(newPrompt);
+    // Move cursor after inserted text
+    const newPos = pos + placeholder.length;
+    cursorPosRef.current = newPos;
+    // Focus and set cursor position after state update
+    setTimeout(() => {
+      if (userPromptRef.current) {
+        userPromptRef.current.focus();
+        userPromptRef.current.selectionStart = newPos;
+        userPromptRef.current.selectionEnd = newPos;
+      }
+    }, 0);
+    // Switch back to edit mode so user can see the inserted placeholder
+    setPromptViewMode('edit');
+  };
+
+  const handleCopyRendered = async () => {
+    const renderedSystem = renderPrompt(systemPrompt, variableValues);
+    const renderedUser = renderPrompt(userPrompt, variableValues);
+    const fullText = `[System Prompt]\n${renderedSystem}\n\n[User Prompt]\n${renderedUser}`;
+    try {
+      await navigator.clipboard.writeText(fullText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback: ignore
+    }
+  };
 
   const handleVariableChange = (index, field, value) => {
     setVariables((prev) =>
@@ -132,6 +194,12 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
         required: false,
       })),
     ]);
+  };
+
+  const toggleDefaultTool = (toolId) => {
+    setDefaultTools((prev) =>
+      prev.includes(toolId) ? prev.filter((item) => item !== toolId) : [...prev, toolId]
+    );
   };
 
   const handleSave = async () => {
@@ -199,6 +267,7 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
         system_prompt: systemPrompt,
         user_prompt: userPrompt,
         variables: normalizedVariables,
+        default_tools: defaultTools,
       };
 
       if (isNew) {
@@ -221,6 +290,7 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     setSystemPrompt(template.system_prompt || '');
     setUserPrompt(template.user_prompt || '');
     setVariables(template.variables || []);
+    setDefaultTools(template.default_tools || []);
     setMessage(null);
   };
 
@@ -334,35 +404,132 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
         description="配置 System Prompt 和 User Prompt 模板。"
         collapsed={isPromptCollapsed}
         onToggle={() => setIsPromptCollapsed((prev) => !prev)}
+        actions={
+          <div className="flex items-center gap-1 p-0.5 bg-gray-100 rounded-md">
+            <button
+              type="button"
+              onClick={() => setPromptViewMode('edit')}
+              className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                promptViewMode === 'edit'
+                  ? 'bg-white text-blue-600 shadow-sm font-medium'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              编辑
+            </button>
+            <button
+              type="button"
+              onClick={() => setPromptViewMode('preview')}
+              className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                promptViewMode === 'preview'
+                  ? 'bg-white text-blue-600 shadow-sm font-medium'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              预览
+            </button>
+          </div>
+        }
       >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              System Prompt
-            </label>
-            <textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="设定 AI 的角色和行为规则..."
-              className="w-full h-24 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-            />
-          </div>
+        {promptViewMode === 'edit' ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                System Prompt
+              </label>
+              <textarea
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder="设定 AI 的角色和行为规则..."
+                className="w-full h-24 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              User Prompt 模板
-            </label>
-            <textarea
-              value={userPrompt}
-              onChange={(e) => setUserPrompt(e.target.value)}
-              placeholder="用户提交给 AI 的内容模板，使用 {{variable}} 插入变量..."
-              className="w-full h-32 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 font-mono"
-            />
-            <p className="mt-2 text-xs text-gray-500">
-              使用 <code>{'{{variable_name}}'}</code> 插入变量占位符。
-            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                User Prompt 模板
+              </label>
+              <textarea
+                ref={userPromptRef}
+                value={userPrompt}
+                onChange={(e) => {
+                  setUserPrompt(e.target.value);
+                  handleUserPromptCursorChange();
+                }}
+                onSelect={handleUserPromptCursorChange}
+                onClick={handleUserPromptCursorChange}
+                onKeyUp={handleUserPromptCursorChange}
+                placeholder="用户提交给 AI 的内容模板，使用 {{variable}} 插入变量..."
+                className="w-full h-32 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 font-mono"
+              />
+              <p className="mt-2 text-xs text-gray-500">
+                使用 <code>{'{{variable_name}}'}</code> 插入变量占位符。
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                默认工具
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {TOOL_OPTIONS.map((tool) => {
+                  const active = defaultTools.includes(tool.id);
+                  return (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      onClick={() => toggleDefaultTool(tool.id)}
+                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        active
+                          ? 'border-blue-200 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`}
+                    >
+                      {tool.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                选择该模板默认启用的工具。用户进入模板后可以再手动取消。
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500">
+                变量已用填充值替换显示。未填充的变量保持 <code>{'{{name}}'}</code> 原样。
+              </p>
+              <button
+                type="button"
+                onClick={handleCopyRendered}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                {copied ? '已复制' : '复制完整 Prompt'}
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                System Prompt
+              </label>
+              <div className="w-full min-h-[6rem] px-3 py-2 text-sm text-gray-900 border border-gray-200 rounded-md bg-gray-50 whitespace-pre-wrap break-words">
+                {renderPrompt(systemPrompt, variableValues) || <span className="text-gray-400">（空）</span>}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                User Prompt
+              </label>
+              <div className="w-full min-h-[8rem] px-3 py-2 text-sm text-gray-900 border border-gray-200 rounded-md bg-gray-50 whitespace-pre-wrap break-words font-mono">
+                {renderPrompt(userPrompt, variableValues) || <span className="text-gray-400">（空）</span>}
+              </div>
+            </div>
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard
@@ -462,6 +629,17 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
                       />
                       必填
                     </label>
+
+                    <button
+                      type="button"
+                      onClick={() => handleInsertVariable(item.name)}
+                      disabled={!item.name?.trim()}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="插入占位符到 User Prompt 光标位置"
+                    >
+                      <ArrowDownToLine size={12} />
+                      插入
+                    </button>
 
                     <button
                       type="button"

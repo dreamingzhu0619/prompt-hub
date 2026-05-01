@@ -29,6 +29,7 @@ const MIN_RIGHT_PANEL_WIDTH = 320;
 const RESIZER_WIDTH = 10;
 const SIDEBAR_WIDTH_STORAGE_KEY = 'prompt-hub:sidebar-width';
 const EDITOR_WIDTH_STORAGE_KEY = 'prompt-hub:editor-width';
+const AVAILABLE_TOOLS = ['web_search', 'knowledge_search'];
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -47,6 +48,14 @@ function readStoredWidth(key, fallback) {
   }
 }
 
+function getTemplateDefaultTools(template) {
+  if (!template || !Array.isArray(template.default_tools)) {
+    return [];
+  }
+
+  return template.default_tools.filter((tool) => AVAILABLE_TOOLS.includes(tool));
+}
+
 function App() {
   const containerRef = useRef(null);
   const [templates, setTemplates] = useState([]);
@@ -57,6 +66,7 @@ function App() {
   const [temperature, setTemperature] = useState(0.7);
   const [searchResults, setSearchResults] = useState([]);
   const [knowledgeResults, setKnowledgeResults] = useState([]);
+  const [selectedTools, setSelectedTools] = useState([]);
   const [knowledgeFiles, setKnowledgeFiles] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -201,6 +211,9 @@ function App() {
   const handleSelectTemplate = (template) => {
     setSelectedTemplate(template);
     setVariableValues({});
+    setSelectedTools(getTemplateDefaultTools(template));
+    setSearchResults([]);
+    setKnowledgeResults([]);
     setResult(null);
     setError(null);
     setTemplateSaveNotice(null);
@@ -219,8 +232,12 @@ function App() {
       system_prompt: '',
       user_prompt: '',
       variables: [],
+      default_tools: [],
     });
     setVariableValues({});
+    setSelectedTools([]);
+    setSearchResults([]);
+    setKnowledgeResults([]);
     setResult(null);
     setError(null);
     setTemplateSaveNotice(null);
@@ -233,6 +250,7 @@ function App() {
     const created = await api.createTemplate(payload);
     setTemplates((prev) => [...prev, created]);
     setSelectedTemplate(created);
+    setSelectedTools(getTemplateDefaultTools(created));
     setTemplateSaveNotice({ type: 'success', text: '已创建' });
   };
 
@@ -243,6 +261,9 @@ function App() {
   const handleIntentResolved = (template, prefilledVariables) => {
     setSelectedTemplate(template);
     setVariableValues(prefilledVariables || {});
+    setSelectedTools(getTemplateDefaultTools(template));
+    setSearchResults([]);
+    setKnowledgeResults([]);
     setResult(null);
     setError(null);
     setTemplateSaveNotice(null);
@@ -260,13 +281,27 @@ function App() {
       system_prompt: updatedTemplate.system_prompt,
       user_prompt: updatedTemplate.user_prompt,
       variables: updatedTemplate.variables,
+      default_tools: updatedTemplate.default_tools,
     });
 
     setTemplates((prev) =>
       prev.map((template) => (template.id === savedTemplate.id ? savedTemplate : template))
     );
     setSelectedTemplate(savedTemplate);
+    setSelectedTools(getTemplateDefaultTools(savedTemplate));
     setTemplateSaveNotice({ type: 'success', text: '已保存' });
+  };
+
+  const handleToolsChange = (nextTools) => {
+    setSelectedTools(nextTools);
+
+    if (!nextTools.includes('web_search')) {
+      setSearchResults([]);
+    }
+
+    if (!nextTools.includes('knowledge_search')) {
+      setKnowledgeResults([]);
+    }
   };
 
   const handleGenerate = async () => {
@@ -294,7 +329,7 @@ function App() {
           variables: variableValues,
           model: selectedModel,
           temperature,
-          tools: ['web_search', 'knowledge_search'],
+          tools: selectedTools,
         });
         agent.connect(agent_id);
       } catch (err) {
@@ -309,8 +344,8 @@ function App() {
           variables: variableValues,
           model: selectedModel,
           temperature,
-          search_results: searchResults.length > 0 ? searchResults : undefined,
-          knowledge_results: knowledgeResults.length > 0 ? knowledgeResults : undefined,
+          search_results: selectedTools.includes('web_search') && searchResults.length > 0 ? searchResults : undefined,
+          knowledge_results: selectedTools.includes('knowledge_search') && knowledgeResults.length > 0 ? knowledgeResults : undefined,
         });
         setResult(res);
       } catch (err) {
@@ -416,6 +451,7 @@ function App() {
                 onCreate={handleCreateTemplateSave}
                 saveNotice={templateSaveNotice}
                 existingScenes={templates}
+                variableValues={variableValues}
               />
 
               {selectedTemplate && (
@@ -462,6 +498,9 @@ function App() {
                   {/* Tools Panel - only show in non-agent mode */}
                   {!useAgent && (
                     <ToolsPanel
+                      key={selectedTemplate?.id || 'new'}
+                      selectedTools={selectedTools}
+                      onToolsChange={handleToolsChange}
                       onSearchSelectionChange={setSearchResults}
                       onKnowledgeSelectionChange={setKnowledgeResults}
                     />
