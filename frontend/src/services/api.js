@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults, mockChatReadyResult, mockChatClarificationResult, mockAgentSteps, mockAgentFinalResult } from './mock/templates';
+import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults, mockChatReadyResult, mockChatClarificationResult, mockAgentSteps, mockAgentFinalResult, mockHistory, mockHistoryDetail, mockLogs, mockCostStats } from './mock/templates';
 
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
@@ -147,5 +147,65 @@ export const api = {
 
   getAgentStreamUrl(agentId) {
     return `/api/agent/${agentId}/stream`;
+  },
+
+  // History
+  async getHistory({ page = 1, limit = 20, template_id, is_favorite } = {}) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      let items = [...mockHistory];
+      if (template_id) items = items.filter((h) => h.template_id === template_id);
+      if (is_favorite) items = items.filter((h) => h.is_favorite);
+      return { items, total: items.length, page, limit };
+    }
+    const params = { page, limit };
+    if (template_id) params.template_id = template_id;
+    if (is_favorite) params.is_favorite = true;
+    const res = await http.get('/history', { params });
+    return res.data;
+  },
+
+  async getHistoryDetail(id) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 200));
+      return { ...mockHistoryDetail, id };
+    }
+    const res = await http.get(`/history/${id}`);
+    return res.data;
+  },
+
+  async updateHistory(id, { is_favorite, note }) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 200));
+      return { success: true };
+    }
+    const res = await http.patch(`/history/${id}`, { is_favorite, note });
+    return res.data;
+  },
+
+  // Logs
+  async getLogs({ level, category, limit = 50 } = {}) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      let items = [...mockLogs];
+      if (level) items = items.filter((l) => l.level === level);
+      if (category) items = items.filter((l) => l.category === category);
+      return items.slice(0, limit);
+    }
+    const params = { limit };
+    if (level) params.level = level;
+    if (category) params.category = category;
+    const res = await http.get('/logs', { params });
+    return res.data;
+  },
+
+  // Cost Stats
+  async getCostStats() {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 200));
+      return mockCostStats;
+    }
+    const res = await http.get('/history/stats');
+    return res.data;
   },
 };

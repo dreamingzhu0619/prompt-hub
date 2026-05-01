@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, MessageSquare, Settings2, Bot, Zap } from 'lucide-react';
+import { Play, MessageSquare, Settings2, Bot, Zap, Clock, ScrollText } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import TemplateEditor from './components/TemplateEditor';
 import VariableForm from './components/VariableForm';
@@ -8,6 +8,8 @@ import ToolsPanel from './components/ToolsPanel';
 import ResultPanel from './components/ResultPanel';
 import FreeInput from './components/FreeInput';
 import AgentSteps from './components/AgentSteps';
+import History from './components/History';
+import Logs from './components/Logs';
 import { api } from './services/api';
 import { useAgentSSE } from './hooks/useAgentSSE';
 
@@ -26,6 +28,7 @@ function App() {
   const [error, setError] = useState(null);
   const [mode, setMode] = useState('free'); // 'free' | 'manual'
   const [useAgent, setUseAgent] = useState(false); // Agent mode toggle
+  const [rightPanel, setRightPanel] = useState('result'); // 'result' | 'history' | 'logs'
 
   const agent = useAgentSSE();
 
@@ -44,6 +47,7 @@ function App() {
     setResult(null);
     setError(null);
     setMode('manual');
+    setRightPanel('result');
     agent.reset();
   };
 
@@ -57,6 +61,7 @@ function App() {
     setResult(null);
     setError(null);
     setMode('manual');
+    setRightPanel('result');
     agent.reset();
   };
 
@@ -74,6 +79,7 @@ function App() {
 
     setError(null);
     setResult(null);
+    setRightPanel('result');
 
     if (useAgent) {
       // Agent mode: start agent and connect SSE
@@ -240,18 +246,62 @@ function App() {
           )}
         </div>
 
-        {/* Right: Result */}
-        <div className="w-1/2 p-6">
-          {showAgentResult ? (
-            <AgentSteps
-              steps={agent.steps}
-              finalResult={agent.finalResult}
-              status={agent.status}
-              error={agent.error}
-            />
-          ) : (
-            <ResultPanel result={result} loading={loading} />
-          )}
+        {/* Right Panel */}
+        <div className="w-1/2 flex flex-col overflow-hidden">
+          {/* Right panel tabs */}
+          <div className="flex items-center border-b border-gray-200 px-4 pt-3">
+            <button
+              onClick={() => setRightPanel('result')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors -mb-px ${
+                rightPanel === 'result'
+                  ? 'border-blue-500 text-blue-600 font-medium'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Zap size={13} />
+              结果
+            </button>
+            <button
+              onClick={() => setRightPanel('history')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors -mb-px ${
+                rightPanel === 'history'
+                  ? 'border-blue-500 text-blue-600 font-medium'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Clock size={13} />
+              历史
+            </button>
+            <button
+              onClick={() => setRightPanel('logs')}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors -mb-px ${
+                rightPanel === 'logs'
+                  ? 'border-blue-500 text-blue-600 font-medium'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <ScrollText size={13} />
+              日志
+            </button>
+          </div>
+
+          {/* Right panel content */}
+          <div className="flex-1 p-6 overflow-hidden">
+            {rightPanel === 'result' && (
+              showAgentResult ? (
+                <AgentSteps
+                  steps={agent.steps}
+                  finalResult={agent.finalResult}
+                  status={agent.status}
+                  error={agent.error}
+                />
+              ) : (
+                <ResultPanel result={result} loading={loading} />
+              )
+            )}
+            {rightPanel === 'history' && <History />}
+            {rightPanel === 'logs' && <Logs />}
+          </div>
         </div>
       </main>
     </div>

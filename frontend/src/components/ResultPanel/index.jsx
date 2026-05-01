@@ -1,14 +1,28 @@
 import ReactMarkdown from 'react-markdown';
-import { Copy, Check, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Copy, Check, Loader2, FileText, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function ResultPanel({ result, loading }) {
   const [copied, setCopied] = useState(false);
+  const [showCopyMenu, setShowCopyMenu] = useState(false);
+  const menuRef = useRef(null);
 
-  const handleCopy = async () => {
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowCopyMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleCopy = async (type = 'markdown') => {
     if (!result) return;
-    await navigator.clipboard.writeText(result.result);
+    const text = type === 'plain' ? stripMarkdown(result.result) : result.result;
+    await navigator.clipboard.writeText(text);
     setCopied(true);
+    setShowCopyMenu(false);
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -23,8 +37,9 @@ export default function ResultPanel({ result, loading }) {
 
   if (!result) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-        生成结果将显示在这里
+      <div className="flex flex-col items-center justify-center h-full text-gray-400 text-sm gap-2">
+        <FileText size={32} className="text-gray-300" />
+        <span>生成结果将显示在这里</span>
       </div>
     );
   }
@@ -33,13 +48,32 @@ export default function ResultPanel({ result, loading }) {
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-700">生成结果</h3>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
-        >
-          {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? '已复制' : '复制'}
-        </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowCopyMenu(!showCopyMenu)}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+          >
+            {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+            {copied ? '已复制' : '复制'}
+            <ChevronDown size={10} />
+          </button>
+          {showCopyMenu && (
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 w-36">
+              <button
+                onClick={() => handleCopy('markdown')}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+              >
+                复制 Markdown
+              </button>
+              <button
+                onClick={() => handleCopy('plain')}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+              >
+                复制纯文本
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto prose prose-sm max-w-none">
@@ -55,4 +89,17 @@ export default function ResultPanel({ result, loading }) {
       )}
     </div>
   );
+}
+
+function stripMarkdown(md) {
+  return md
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`{1,3}(.*?)`{1,3}/gs, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^[-*+]\s+/gm, '• ')
+    .replace(/^>\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
