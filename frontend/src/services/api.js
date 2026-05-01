@@ -92,14 +92,14 @@ export const api = {
   },
 
   // Intent Feedback
-  async intentFeedback(generationId, { correct, note }) {
+  async intentFeedback(intentResultId, { correct, note }) {
     if (useMock) {
       await new Promise((r) => setTimeout(r, 300));
       return { success: true };
     }
-    const res = await http.patch(`/history/${generationId}`, {
-      intent_correct: correct,
-      intent_note: note,
+    const res = await http.patch(`/chat/${intentResultId}/feedback`, {
+      correct,
+      note,
     });
     return res.data;
   },

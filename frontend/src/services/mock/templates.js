@@ -167,12 +167,19 @@ export const mockChatReadyResult = {
 };
 
 export const mockChatClarificationResult = {
+  id: 2,
   type: 'clarification',
+  template: {
+    id: 1,
+    name: '简历优化',
+    scene: '求职',
+    category: '简历',
+  },
+  prefilled_variables: {},
+  missing_variables: ['jd', 'resume'],
   question: '您想优化简历以匹配具体岗位，还是想全面润色简历内容？如果是匹配岗位，请提供目标岗位的JD。',
-  candidates: [
-    { id: 1, name: '简历优化', confidence: 0.65 },
-    { id: 5, name: '文案润色', confidence: 0.35 },
-  ],
+  confidence: 0.65,
+  reasoning: '用户表达了简历相关需求，已匹配到简历优化模板，但还缺少必填信息。',
 };
 
 export const mockGenerateResult = {

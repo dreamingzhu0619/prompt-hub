@@ -37,13 +37,14 @@ function FreeInput({ templates, onIntentResolved }) {
           },
         ]);
       } else if (result.type === 'clarification') {
+        setIntentResult(result.template ? result : null);
         setConversation((prev) => [
           ...prev,
           {
             role: 'assistant',
             type: 'clarification',
             content: result.question,
-            candidates: result.candidates,
+            result,
           },
         ]);
       }
@@ -66,18 +67,31 @@ function FreeInput({ templates, onIntentResolved }) {
   };
 
   const handleFeedback = async (correct) => {
-    if (correct) {
-      setFeedbackGiven(true);
-    } else {
-      setShowFeedbackInput(true);
+    if (!intentResult?.id) {
+      return;
     }
-    // In real mode, would call api.intentFeedback
+
+    if (correct) {
+      await api.intentFeedback(intentResult.id, { correct: true, note: '' });
+      setFeedbackGiven(true);
+      return;
+    }
+
+    setShowFeedbackInput(true);
   };
 
   const handleSubmitNegativeFeedback = async () => {
+    if (!intentResult?.id) {
+      return;
+    }
+
+    await api.intentFeedback(intentResult.id, {
+      correct: false,
+      note: feedbackNote,
+    });
     setFeedbackGiven(true);
     setShowFeedbackInput(false);
-    // In real mode: api.intentFeedback(intentResult.id, { correct: false, note: feedbackNote })
+    setFeedbackNote('');
   };
 
   const handleKeyDown = (e) => {
@@ -129,17 +143,22 @@ function FreeInput({ templates, onIntentResolved }) {
               )}
 
               {/* Clarification Candidates */}
-              {msg.type === 'clarification' && msg.candidates && (
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 mb-1">候选模板：</p>
-                  {msg.candidates.map((c) => (
-                    <div key={c.id} className="flex items-center gap-2 text-xs text-gray-600">
-                      <span>{c.name}</span>
-                      <span className="px-1 py-0.5 bg-gray-200 rounded">
-                        {Math.round(c.confidence * 100)}%
-                      </span>
-                    </div>
-                  ))}
+              {msg.type === 'clarification' && msg.result?.template && (
+                <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">候选模板: {msg.result.template.name}</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded">
+                      {Math.round((msg.result.confidence || 0) * 100)}%
+                    </span>
+                  </div>
+                  {Array.isArray(msg.result.missing_variables) && msg.result.missing_variables.length > 0 && (
+                    <p className="text-xs text-gray-500">
+                      还缺少: {msg.result.missing_variables.join('、')}
+                    </p>
+                  )}
+                  {msg.result.reasoning && (
+                    <p className="text-xs text-gray-500">{msg.result.reasoning}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -163,16 +182,22 @@ function FreeInput({ templates, onIntentResolved }) {
             <div className="flex items-center gap-2">
               <Sparkles size={14} className="text-blue-600" />
               <span className="text-sm font-medium text-blue-800">
-                已匹配: {intentResult.template.name}
+                {intentResult.type === 'ready' ? '已匹配' : '候选模板'}: {intentResult.template.name}
               </span>
             </div>
             <button
               onClick={handleApplyIntent}
               className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700"
             >
-              应用并填充变量 <ArrowRight size={12} />
+              {intentResult.type === 'ready' ? '应用并填充变量' : '去补全变量'} <ArrowRight size={12} />
             </button>
           </div>
+
+          {Array.isArray(intentResult.missing_variables) && intentResult.missing_variables.length > 0 && (
+            <p className="mt-2 text-xs text-blue-700">
+              仍需补充: {intentResult.missing_variables.join('、')}
+            </p>
+          )}
 
           {/* Feedback buttons */}
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-blue-200">

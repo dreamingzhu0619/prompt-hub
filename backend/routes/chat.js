@@ -91,4 +91,42 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+router.patch("/:id/feedback", (req, res) => {
+  const id = Number(req.params.id);
+  const { correct, note } = req.body || {};
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ message: "无效的意图识别记录 id" });
+  }
+
+  if (typeof correct !== "boolean") {
+    return res.status(400).json({ message: "correct 必须是布尔值" });
+  }
+
+  const existing = db
+    .prepare("SELECT id FROM intent_results WHERE id = ?")
+    .get(id);
+
+  if (!existing) {
+    return res.status(404).json({ message: "意图识别记录不存在" });
+  }
+
+  db.prepare(
+    `UPDATE intent_results
+     SET evaluation = ?,
+         evaluation_note = ?,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`
+  ).run(correct ? "correct" : "incorrect", note ? String(note).trim() : null, id);
+
+  log("info", "intent", "提交意图识别反馈", {
+    intent_result_id: id,
+    evaluation: correct ? "correct" : "incorrect",
+  });
+
+  return res.json({
+    success: true,
+  });
+});
+
 module.exports = router;
