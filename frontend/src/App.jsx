@@ -16,6 +16,8 @@ function App() {
   const [selectedModel, setSelectedModel] = useState('');
   const [temperature, setTemperature] = useState(0.7);
   const [searchResults, setSearchResults] = useState([]);
+  const [knowledgeResults, setKnowledgeResults] = useState([]);
+  const [knowledgeFiles, setKnowledgeFiles] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -26,6 +28,7 @@ function App() {
       setModels(ms);
       if (ms.length > 0) setSelectedModel(ms[0].id);
     });
+    api.getKnowledgeFiles().then(setKnowledgeFiles);
   }, []);
 
   const handleSelectTemplate = (template) => {
@@ -63,6 +66,7 @@ function App() {
         model: selectedModel,
         temperature,
         search_results: searchResults.length > 0 ? searchResults : undefined,
+        knowledge_results: knowledgeResults.length > 0 ? knowledgeResults : undefined,
       });
       setResult(res);
     } catch (err) {
@@ -78,6 +82,8 @@ function App() {
         templates={templates}
         selectedId={selectedTemplate?.id}
         onSelect={handleSelectTemplate}
+        knowledgeFiles={knowledgeFiles}
+        onKnowledgeFilesChange={setKnowledgeFiles}
       />
 
       <main className="flex-1 flex overflow-hidden">
@@ -101,7 +107,10 @@ function App() {
                 onTemperatureChange={setTemperature}
               />
 
-              <ToolsPanel onSelectionChange={setSearchResults} />
+              <ToolsPanel
+                onSearchSelectionChange={setSearchResults}
+                onKnowledgeSelectionChange={setKnowledgeResults}
+              />
 
               {error && (
                 <p className="text-sm text-red-500">{error}</p>

@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { ChevronRight, ChevronDown, FileText } from 'lucide-react';
+import KnowledgePanel from '../KnowledgePanel';
 
-export default function Sidebar({ templates, selectedId, onSelect }) {
+export default function Sidebar({ templates, selectedId, onSelect, knowledgeFiles, onKnowledgeFilesChange }) {
   const [expanded, setExpanded] = useState({});
 
   // Group templates by scene → category
@@ -72,6 +73,7 @@ export default function Sidebar({ templates, selectedId, onSelect }) {
           </div>
         ))}
       </nav>
+      <KnowledgePanel files={knowledgeFiles} onFilesChange={onKnowledgeFilesChange} />
     </aside>
   );
 }

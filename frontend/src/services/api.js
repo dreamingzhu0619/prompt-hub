@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults } from './mock/templates';
+import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults } from './mock/templates';
 
 const useMock = import.meta.env.VITE_USE_MOCK !== 'false';
 
@@ -39,8 +39,46 @@ export const api = {
     return res.data.results;
   },
 
+  // Knowledge
+  async getKnowledgeFiles() {
+    if (useMock) return mockKnowledgeFiles;
+    const res = await http.get('/knowledge');
+    return res.data;
+  },
+
+  async uploadKnowledgeFile(file) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 500));
+      return { filename: file.name, size: file.size, uploaded_at: new Date().toISOString() };
+    }
+    const form = new FormData();
+    form.append('file', file);
+    const res = await http.post('/knowledge/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  async deleteKnowledgeFile(filename) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      return { success: true };
+    }
+    const res = await http.delete(`/knowledge/${encodeURIComponent(filename)}`);
+    return res.data;
+  },
+
+  async searchKnowledge(query) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 600));
+      return mockKnowledgeSearchResults;
+    }
+    const res = await http.post('/knowledge/search', { query });
+    return res.data.results;
+  },
+
   // Generate
-  async generate({ template_id, variables, model, temperature, search_results }) {
+  async generate({ template_id, variables, model, temperature, search_results, knowledge_results }) {
     if (useMock) {
       await new Promise((r) => setTimeout(r, 1500));
       return mockGenerateResult;
@@ -51,6 +89,7 @@ export const api = {
       model,
       temperature,
       search_results,
+      knowledge_results,
     });
     return res.data;
   },

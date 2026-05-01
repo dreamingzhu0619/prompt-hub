@@ -114,6 +114,42 @@ export const mockSearchResults = [
   },
 ];
 
+export const mockKnowledgeFiles = [
+  {
+    filename: 'react-hooks-guide.md',
+    size: 12480,
+    uploaded_at: '2024-03-15T10:30:00Z',
+  },
+  {
+    filename: '前端面试题库.md',
+    size: 34560,
+    uploaded_at: '2024-03-10T08:00:00Z',
+  },
+  {
+    filename: 'system-design-notes.md',
+    size: 8720,
+    uploaded_at: '2024-03-08T14:20:00Z',
+  },
+];
+
+export const mockKnowledgeSearchResults = [
+  {
+    file: 'react-hooks-guide.md',
+    score: 0.92,
+    preview: 'useEffect 的清理函数会在组件卸载时执行，也会在依赖变化导致重新执行 effect 之前执行。常见陷阱：在 useEffect 中使用了闭包中的旧值...',
+  },
+  {
+    file: '前端面试题库.md',
+    score: 0.85,
+    preview: 'React Hooks 相关面试题：1. useState 的更新是同步还是异步？2. useEffect 和 useLayoutEffect 的区别？3. 自定义 Hook 的命名规范和使用场景...',
+  },
+  {
+    file: 'system-design-notes.md',
+    score: 0.71,
+    preview: '前端状态管理方案对比：Redux vs MobX vs Zustand vs Jotai。在大型应用中推荐使用模块化的状态管理，将全局状态和局部状态分离...',
+  },
+];
+
 export const mockGenerateResult = {
   id: 1,
   result: `## 优化后的简历
