@@ -3,6 +3,28 @@ const { db, parseTemplate, log } = require("../db");
 
 const router = express.Router();
 
+const VARIABLE_NAME_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function validateVariables(variables) {
+  for (const v of variables) {
+    if (!v.name || !VARIABLE_NAME_REGEX.test(v.name)) {
+      return `变量名 "${v.name || ""}" 格式无效，需使用字母/数字/下划线且以字母或下划线开头`;
+    }
+    if (!v.label || !String(v.label).trim()) {
+      return `变量 "${v.name}" 的展示名称不能为空`;
+    }
+    if (v.type && !["text", "textarea"].includes(v.type)) {
+      return `变量 "${v.name}" 的类型无效，仅支持 text 或 textarea`;
+    }
+  }
+  const names = variables.map((v) => v.name);
+  const duplicates = names.filter((n, i) => names.indexOf(n) !== i);
+  if (duplicates.length > 0) {
+    return `变量名重复: ${[...new Set(duplicates)].join(", ")}`;
+  }
+  return null;
+}
+
 function listTemplates() {
   const rows = db
     .prepare(
@@ -65,24 +87,31 @@ router.post("/", (req, res) => {
     system_prompt: systemPrompt,
     user_prompt: userPrompt,
     variables,
+    default_tools: defaultTools,
   } = req.body || {};
 
   if (
     !name ||
     !scene ||
     !category ||
-    !systemPrompt ||
-    !userPrompt ||
-    !Array.isArray(variables)
+    typeof systemPrompt !== "string" ||
+    typeof userPrompt !== "string" ||
+    !Array.isArray(variables) ||
+    !Array.isArray(defaultTools)
   ) {
     return res.status(400).json({ message: "缺少必要字段" });
+  }
+
+  const varError = validateVariables(variables);
+  if (varError) {
+    return res.status(400).json({ message: varError });
   }
 
   const result = db
     .prepare(
       `INSERT INTO prompt_templates (
-        name, scene, category, description, system_prompt, user_prompt, variables
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        name, scene, category, description, system_prompt, user_prompt, variables, default_tools
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       name,
@@ -91,7 +120,8 @@ router.post("/", (req, res) => {
       description || null,
       systemPrompt,
       userPrompt,
-      JSON.stringify(variables)
+      JSON.stringify(variables),
+      JSON.stringify(defaultTools)
     );
 
   log("info", "prompt", "创建模板", { template_id: result.lastInsertRowid, name });
@@ -120,6 +150,7 @@ router.put("/:id", (req, res) => {
     system_prompt: systemPrompt,
     user_prompt: userPrompt,
     variables,
+    default_tools: defaultTools,
   } = req.body || {};
 
   if (
@@ -128,9 +159,15 @@ router.put("/:id", (req, res) => {
     !category ||
     !systemPrompt ||
     !userPrompt ||
-    !Array.isArray(variables)
+    !Array.isArray(variables) ||
+    !Array.isArray(defaultTools)
   ) {
     return res.status(400).json({ message: "缺少必要字段" });
+  }
+
+  const varError = validateVariables(variables);
+  if (varError) {
+    return res.status(400).json({ message: varError });
   }
 
   db.prepare(
@@ -142,6 +179,7 @@ router.put("/:id", (req, res) => {
          system_prompt = ?,
          user_prompt = ?,
          variables = ?,
+         default_tools = ?,
          version = version + 1,
          updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
@@ -153,6 +191,7 @@ router.put("/:id", (req, res) => {
     systemPrompt,
     userPrompt,
     JSON.stringify(variables),
+    JSON.stringify(defaultTools),
     req.params.id
   );
 

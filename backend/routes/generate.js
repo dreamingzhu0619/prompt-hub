@@ -5,9 +5,10 @@ const { generate } = require("../core/llm");
 const router = express.Router();
 
 function renderTemplate(template, variables) {
-  return template.user_prompt.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
+  return template.user_prompt.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (match, key) => {
     const value = variables[key];
-    return value == null ? "" : String(value);
+    // Keep placeholder if value is null/undefined/empty, consistent with frontend preview
+    return value != null && String(value).trim() !== "" ? String(value) : match;
   });
 }
 

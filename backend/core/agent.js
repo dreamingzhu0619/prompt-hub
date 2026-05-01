@@ -3,9 +3,9 @@ const { generate } = require("./llm");
 const { getToolExecutor } = require("./tools");
 
 function renderTemplate(template, variables) {
-  return template.user_prompt.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
+  return template.user_prompt.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (match, key) => {
     const value = variables[key];
-    return value == null ? "" : String(value);
+    return value != null && String(value).trim() !== "" ? String(value) : match;
   });
 }
 
