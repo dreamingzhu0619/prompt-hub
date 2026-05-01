@@ -25,7 +25,7 @@ module.exports = {
   llm: {
     provider: process.env.LLM_PROVIDER || "openai-compatible",
     baseUrl: process.env.LLM_BASE_URL || "https://api.openai.com/v1",
-    apiKey: process.env.LLM_API_KEY || "",
+    apiKey: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || "",
     defaultModel: process.env.LLM_DEFAULT_MODEL || "gpt-4o-mini",
     models: parseList(process.env.OPENAI_COMPAT_MODELS, [
       "gpt-4o",
