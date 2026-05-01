@@ -54,6 +54,26 @@ CREATE TABLE IF NOT EXISTS logs (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS intent_results (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  input TEXT NOT NULL,
+  context TEXT,
+  model TEXT,
+  type TEXT NOT NULL,
+  matched_template_id INTEGER,
+  confidence REAL NOT NULL DEFAULT 0,
+  prefilled_variables TEXT,
+  missing_variables TEXT,
+  question TEXT,
+  reasoning TEXT,
+  llm_response TEXT,
+  evaluation TEXT,
+  evaluation_note TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (matched_template_id) REFERENCES prompt_templates(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_prompt_templates_scene_category
   ON prompt_templates(scene, category);
 
@@ -65,3 +85,6 @@ CREATE INDEX IF NOT EXISTS idx_execution_steps_generation_id
 
 CREATE INDEX IF NOT EXISTS idx_logs_category_created_at
   ON logs(category, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_intent_results_template_created_at
+  ON intent_results(matched_template_id, created_at DESC);

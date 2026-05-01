@@ -4,6 +4,7 @@ const config = require("./config");
 const { log } = require("./db");
 const promptsRouter = require("./routes/prompts");
 const generateRouter = require("./routes/generate");
+const chatRouter = require("./routes/chat");
 const modelsRouter = require("./routes/models");
 const searchRouter = require("./routes/search");
 const knowledgeRouter = require("./routes/knowledge");
@@ -23,6 +24,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/prompts", promptsRouter);
 app.use("/api/generate", generateRouter);
+app.use("/api/chat", chatRouter);
 app.use("/api/models", modelsRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/knowledge", knowledgeRouter);
