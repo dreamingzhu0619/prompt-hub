@@ -72,6 +72,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [templateSaveNotice, setTemplateSaveNotice] = useState(null);
+  const [requestPreview, setRequestPreview] = useState(0);
   const [mode, setMode] = useState('free'); // 'free' | 'manual'
   const [useAgent, setUseAgent] = useState(false); // Agent mode toggle
   const [rightPanel, setRightPanel] = useState('result'); // 'result' | 'history' | 'logs'
@@ -452,6 +453,7 @@ function App() {
                 saveNotice={templateSaveNotice}
                 existingScenes={templates}
                 variableValues={variableValues}
+                requestPreview={requestPreview}
               />
 
               {selectedTemplate && (
@@ -460,6 +462,7 @@ function App() {
                     variables={selectedTemplate.variables}
                     values={variableValues}
                     onChange={handleVariableChange}
+                    onSave={() => setRequestPreview((n) => n + 1)}
                   />
 
                   <Settings

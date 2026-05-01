@@ -53,7 +53,7 @@ function renderPrompt(template, variableValues) {
   });
 }
 
-export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes, variableValues = {} }) {
+export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes, variableValues = {}, requestPreview = 0 }) {
   const isNew = template && !template.id;
   const [name, setName] = useState(template?.name || '');
   const [scene, setScene] = useState(template?.scene || '');
@@ -87,6 +87,14 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     setPromptViewMode('edit');
     setCopied(false);
   }, [template]);
+
+  // Switch to preview mode when requestPreview prop is triggered
+  useEffect(() => {
+    if (requestPreview > 0) {
+      setPromptViewMode('preview');
+      setIsPromptCollapsed(false);
+    }
+  }, [requestPreview]);
 
   if (!template) {
     return (
