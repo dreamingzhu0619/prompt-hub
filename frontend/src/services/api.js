@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults } from './mock/templates';
+import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults, mockChatReadyResult, mockChatClarificationResult } from './mock/templates';
 
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
@@ -75,6 +75,33 @@ export const api = {
     }
     const res = await http.post('/knowledge/search', { query });
     return res.data.results;
+  },
+
+  // Chat (Intent Recognition)
+  async chat(input, context) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 1000));
+      // Simulate: if input contains "简历" → ready, otherwise → clarification
+      if (input.includes('简历') || input.includes('resume')) {
+        return mockChatReadyResult;
+      }
+      return mockChatClarificationResult;
+    }
+    const res = await http.post('/chat', { input, context });
+    return res.data;
+  },
+
+  // Intent Feedback
+  async intentFeedback(generationId, { correct, note }) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      return { success: true };
+    }
+    const res = await http.patch(`/history/${generationId}`, {
+      intent_correct: correct,
+      intent_note: note,
+    });
+    return res.data;
   },
 
   // Generate

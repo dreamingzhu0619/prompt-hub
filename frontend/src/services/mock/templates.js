@@ -150,6 +150,31 @@ export const mockKnowledgeSearchResults = [
   },
 ];
 
+export const mockChatReadyResult = {
+  type: 'ready',
+  template: {
+    id: 1,
+    name: '简历优化',
+    scene: '求职',
+    category: '简历',
+  },
+  prefilled_variables: {
+    jd: '',
+    resume: '',
+  },
+  confidence: 0.92,
+  reasoning: '用户明确提到了"简历"和"优化"，与简历优化模板高度匹配。',
+};
+
+export const mockChatClarificationResult = {
+  type: 'clarification',
+  question: '您想优化简历以匹配具体岗位，还是想全面润色简历内容？如果是匹配岗位，请提供目标岗位的JD。',
+  candidates: [
+    { id: 1, name: '简历优化', confidence: 0.65 },
+    { id: 5, name: '文案润色', confidence: 0.35 },
+  ],
+};
+
 export const mockGenerateResult = {
   id: 1,
   result: `## 优化后的简历
