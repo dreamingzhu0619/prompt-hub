@@ -205,6 +205,9 @@ module.exports = {
     previewChars: Number(process.env.KNOWLEDGE_PREVIEW_CHARS || 300),
     contentChars: Number(process.env.KNOWLEDGE_CONTENT_CHARS || 4000),
   },
+  agent: {
+    maxIterations: Number(process.env.AGENT_MAX_ITERATIONS || 5),
+  },
   paths: {
     root: __dirname,
     dataDir,
