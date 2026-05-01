@@ -154,12 +154,11 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     const before = userPrompt.slice(0, pos);
     const after = userPrompt.slice(pos);
     const needNewlineBefore = pos > 0 && before[before.length - 1] !== '\n';
-    const prefix = needNewlineBefore ? '\n' : '';
-    const newText = prefix + insertion;
+    const needNewlineAfter = after.length === 0 || after[0] !== '\n';
+    const newText = (needNewlineBefore ? '\n' : '') + insertion + (needNewlineAfter ? '\n' : '');
     setUserPrompt(before + newText + after);
     const newPos = pos + newText.length;
     cursorPosRef.current = newPos;
-    // Focus and set cursor position after state update
     setTimeout(() => {
       if (userPromptRef.current) {
         userPromptRef.current.focus();
@@ -167,7 +166,6 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
         userPromptRef.current.selectionEnd = newPos;
       }
     }, 0);
-    // Switch back to edit mode so user can see the inserted placeholder
     setPromptViewMode('edit');
   };
 
@@ -195,15 +193,14 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   const handleAddVariable = () => {
     const draft = createVariableDraft(variables.length);
     setVariables((prev) => [...prev, draft]);
-    // Auto-insert "label：{{name}}" into user_prompt at cursor position
+    // Auto-insert "label：{{name}}\n" into user_prompt at cursor position
     const insertion = `${draft.label}：{{${draft.name}}}`;
     const pos = cursorPosRef.current;
     const before = userPrompt.slice(0, pos);
     const after = userPrompt.slice(pos);
-    // Add newline before if cursor is not at start and previous char is not newline
     const needNewlineBefore = pos > 0 && before[before.length - 1] !== '\n';
-    const prefix = needNewlineBefore ? '\n' : '';
-    const newText = prefix + insertion;
+    const needNewlineAfter = after.length === 0 || after[0] !== '\n';
+    const newText = (needNewlineBefore ? '\n' : '') + insertion + (needNewlineAfter ? '\n' : '');
     setUserPrompt(before + newText + after);
     cursorPosRef.current = pos + newText.length;
   };
