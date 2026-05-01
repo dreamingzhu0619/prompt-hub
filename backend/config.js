@@ -192,6 +192,13 @@ module.exports = {
     anthropicVersion: defaultProvider?.anthropicVersion || "2023-06-01",
     maxTokens: defaultProvider?.maxTokens || Number(process.env.LLM_MAX_TOKENS || 2000),
   },
+  tavily: {
+    apiKey: process.env.TAVILY_API_KEY || "",
+    baseUrl: process.env.TAVILY_BASE_URL || "https://api.tavily.com",
+    maxResults: Number(process.env.TAVILY_MAX_RESULTS || 5),
+    timeoutMs: Number(process.env.TAVILY_TIMEOUT_MS || 15000),
+    includeRawContent: process.env.TAVILY_INCLUDE_RAW_CONTENT === "true",
+  },
   paths: {
     root: __dirname,
     dataDir,

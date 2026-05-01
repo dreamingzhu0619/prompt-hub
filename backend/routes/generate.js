@@ -19,9 +19,48 @@ function validateVariables(template, input) {
   return missing;
 }
 
+function normalizeSearchResults(input) {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  return input
+    .map((item) => ({
+      title: String(item?.title || "").trim(),
+      url: String(item?.url || "").trim(),
+      content: String(item?.content || "").trim(),
+    }))
+    .filter((item) => item.title || item.url || item.content);
+}
+
+function buildSearchContext(searchResults) {
+  if (searchResults.length === 0) {
+    return "";
+  }
+
+  const lines = searchResults.map((item, index) => {
+    return [
+      `[搜索结果 ${index + 1}]`,
+      `标题: ${item.title || "未命名"}`,
+      `链接: ${item.url || "无"}`,
+      `摘要: ${item.content || "无"}`,
+    ].join("\n");
+  });
+
+  return `以下是可供参考的搜索结果，请优先基于这些外部信息作答，并在合适时引用其中事实：\n\n${lines.join(
+    "\n\n"
+  )}`;
+}
+
 router.post("/", async (req, res, next) => {
   const startedAt = Date.now();
-  const { template_id: templateId, variables = {}, model, temperature = 0.7 } = req.body || {};
+  const {
+    template_id: templateId,
+    variables = {},
+    model,
+    temperature = 0.7,
+    search_results: searchResultsInput,
+  } = req.body || {};
   const selectedModel = model || require("../config").llm.defaultModel;
 
   if (!templateId) {
@@ -40,7 +79,12 @@ router.post("/", async (req, res, next) => {
     return res.status(400).json({ message: `请填写必填变量: ${missing.join(", ")}` });
   }
 
-  const renderedPrompt = renderTemplate(template, variables);
+  const searchResults = normalizeSearchResults(searchResultsInput);
+  const searchContext = buildSearchContext(searchResults);
+  const templatePrompt = renderTemplate(template, variables);
+  const renderedPrompt = searchContext
+    ? `${searchContext}\n\n---\n\n${templatePrompt}`
+    : templatePrompt;
 
   try {
     const llmResponse = await generate({
@@ -58,6 +102,7 @@ router.post("/", async (req, res, next) => {
         model,
         temperature,
         variables,
+        search_results,
         rendered_prompt,
         result,
         prompt_tokens,
@@ -65,7 +110,7 @@ router.post("/", async (req, res, next) => {
         total_tokens,
         cost,
         duration_ms
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     const record = insert.run(
@@ -74,6 +119,7 @@ router.post("/", async (req, res, next) => {
       selectedModel,
       temperature,
       JSON.stringify(variables),
+      searchResults.length > 0 ? JSON.stringify(searchResults) : null,
       renderedPrompt,
       llmResponse.result,
       llmResponse.tokens.prompt,
@@ -101,10 +147,28 @@ router.post("/", async (req, res, next) => {
       "completed"
     );
 
+    if (searchResults.length > 0) {
+      db.prepare(
+        `INSERT INTO execution_steps (
+          generation_id, step_type, step_name, input, output, status
+        ) VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(
+        record.lastInsertRowid,
+        "tool",
+        "search_context",
+        JSON.stringify({
+          count: searchResults.length,
+        }),
+        JSON.stringify(searchResults),
+        "completed"
+      );
+    }
+
     log("info", "generate", "完成手动生成", {
       generation_id: record.lastInsertRowid,
       template_id: template.id,
       model: selectedModel,
+      search_results_count: searchResults.length,
     });
 
     return res.status(201).json({

@@ -16,6 +16,15 @@ function runSchema() {
   db.exec(sql);
 }
 
+function ensureColumn(tableName, columnName, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  const exists = columns.some((column) => column.name === columnName);
+
+  if (!exists) {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
+}
+
 function seedPromptTemplates() {
   const count = db.prepare("SELECT COUNT(*) AS count FROM prompt_templates").get().count;
   if (count > 0) {
@@ -61,6 +70,7 @@ function parseTemplate(row) {
 }
 
 runSchema();
+ensureColumn("generations", "search_results", "TEXT");
 seedPromptTemplates();
 
 module.exports = {

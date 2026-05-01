@@ -5,6 +5,7 @@ const { log } = require("./db");
 const promptsRouter = require("./routes/prompts");
 const generateRouter = require("./routes/generate");
 const modelsRouter = require("./routes/models");
+const searchRouter = require("./routes/search");
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/prompts", promptsRouter);
 app.use("/api/generate", generateRouter);
 app.use("/api/models", modelsRouter);
+app.use("/api/search", searchRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: "接口不存在" });
