@@ -1,5 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Play, MessageSquare, Settings2, Bot, Zap, Clock, ScrollText } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import {
+  Play,
+  MessageSquare,
+  Settings2,
+  Bot,
+  Zap,
+  Clock,
+  ScrollText,
+  PanelRightClose,
+  PanelRightOpen,
+} from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import TemplateEditor from './components/TemplateEditor';
 import VariableForm from './components/VariableForm';
@@ -13,7 +23,32 @@ import Logs from './components/Logs';
 import { api } from './services/api';
 import { useAgentSSE } from './hooks/useAgentSSE';
 
+const MIN_SIDEBAR_WIDTH = 220;
+const MIN_EDITOR_WIDTH = 520;
+const MIN_RIGHT_PANEL_WIDTH = 320;
+const RESIZER_WIDTH = 10;
+const SIDEBAR_WIDTH_STORAGE_KEY = 'prompt-hub:sidebar-width';
+const EDITOR_WIDTH_STORAGE_KEY = 'prompt-hub:editor-width';
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function readStoredWidth(key, fallback) {
+  if (typeof window === 'undefined') {
+    return fallback;
+  }
+
+  try {
+    const stored = Number(window.localStorage.getItem(key));
+    return Number.isFinite(stored) && stored > 0 ? stored : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function App() {
+  const containerRef = useRef(null);
   const [templates, setTemplates] = useState([]);
   const [models, setModels] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -26,9 +61,14 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [templateSaveNotice, setTemplateSaveNotice] = useState(null);
   const [mode, setMode] = useState('free'); // 'free' | 'manual'
   const [useAgent, setUseAgent] = useState(false); // Agent mode toggle
   const [rightPanel, setRightPanel] = useState('result'); // 'result' | 'history' | 'logs'
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [editorWidth, setEditorWidth] = useState(820);
+  const [dragState, setDragState] = useState(null);
+  const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
 
   const agent = useAgentSSE();
 
@@ -41,14 +81,159 @@ function App() {
     api.getKnowledgeFiles().then(setKnowledgeFiles);
   }, []);
 
+  useEffect(() => {
+    setSidebarWidth(readStoredWidth(SIDEBAR_WIDTH_STORAGE_KEY, 260));
+    setEditorWidth(readStoredWidth(EDITOR_WIDTH_STORAGE_KEY, 820));
+  }, []);
+
+  useEffect(() => {
+    const clampWidths = () => {
+      const containerWidth = containerRef.current?.clientWidth || 0;
+      if (!containerWidth) return;
+
+      const maxSidebarWidth = Math.max(
+        MIN_SIDEBAR_WIDTH,
+        containerWidth - MIN_EDITOR_WIDTH - MIN_RIGHT_PANEL_WIDTH - RESIZER_WIDTH * 2
+      );
+      const nextSidebarWidth = clamp(sidebarWidth, MIN_SIDEBAR_WIDTH, maxSidebarWidth);
+      const maxEditorWidth = Math.max(
+        MIN_EDITOR_WIDTH,
+        containerWidth - nextSidebarWidth - MIN_RIGHT_PANEL_WIDTH - RESIZER_WIDTH * 2
+      );
+      const nextEditorWidth = clamp(editorWidth, MIN_EDITOR_WIDTH, maxEditorWidth);
+
+      if (nextSidebarWidth !== sidebarWidth) {
+        setSidebarWidth(nextSidebarWidth);
+      }
+      if (nextEditorWidth !== editorWidth) {
+        setEditorWidth(nextEditorWidth);
+      }
+    };
+
+    clampWidths();
+    window.addEventListener('resize', clampWidths);
+    return () => window.removeEventListener('resize', clampWidths);
+  }, [sidebarWidth, editorWidth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth));
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(EDITOR_WIDTH_STORAGE_KEY, String(editorWidth));
+    } catch {
+      // Ignore storage write failures.
+    }
+  }, [editorWidth]);
+
+  useEffect(() => {
+    if (!dragState) return undefined;
+
+    const handleMouseMove = (event) => {
+      const containerWidth = containerRef.current?.clientWidth || 0;
+      if (!containerWidth) return;
+
+      const deltaX = event.clientX - dragState.startX;
+
+      if (dragState.type === 'sidebar') {
+        const maxSidebarWidth = Math.max(
+          MIN_SIDEBAR_WIDTH,
+          containerWidth - MIN_EDITOR_WIDTH - MIN_RIGHT_PANEL_WIDTH - RESIZER_WIDTH * 2
+        );
+        setSidebarWidth(
+          clamp(dragState.startSidebarWidth + deltaX, MIN_SIDEBAR_WIDTH, maxSidebarWidth)
+        );
+        return;
+      }
+
+      const maxEditorWidth = Math.max(
+        MIN_EDITOR_WIDTH,
+        containerWidth - sidebarWidth - MIN_RIGHT_PANEL_WIDTH - RESIZER_WIDTH * 2
+      );
+      setEditorWidth(
+        clamp(dragState.startEditorWidth + deltaX, MIN_EDITOR_WIDTH, maxEditorWidth)
+      );
+    };
+
+    const handleMouseUp = () => {
+      setDragState(null);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [dragState, sidebarWidth]);
+
+  const handleResizeStart = (type, event) => {
+    if (type === 'editor' && isEditorCollapsed) {
+      return;
+    }
+    event.preventDefault();
+    setDragState({
+      type,
+      startX: event.clientX,
+      startSidebarWidth: sidebarWidth,
+      startEditorWidth: editorWidth,
+    });
+  };
+
+  const toggleEditorCollapsed = () => {
+    setIsEditorCollapsed((prev) => !prev);
+  };
+
   const handleSelectTemplate = (template) => {
     setSelectedTemplate(template);
     setVariableValues({});
     setResult(null);
     setError(null);
+    setTemplateSaveNotice(null);
     setMode('manual');
     setRightPanel('result');
     agent.reset();
+  };
+
+  const handleCreateTemplate = (prefill = {}) => {
+    // Create a blank draft template (no id = create mode)
+    setSelectedTemplate({
+      name: '',
+      scene: prefill.scene || '',
+      category: prefill.category || '',
+      description: '',
+      system_prompt: '',
+      user_prompt: '',
+      variables: [],
+    });
+    setVariableValues({});
+    setResult(null);
+    setError(null);
+    setTemplateSaveNotice(null);
+    setMode('manual');
+    setRightPanel('result');
+    agent.reset();
+  };
+
+  const handleCreateTemplateSave = async (payload) => {
+    const created = await api.createTemplate(payload);
+    setTemplates((prev) => [...prev, created]);
+    setSelectedTemplate(created);
+    setTemplateSaveNotice({ type: 'success', text: '已创建' });
   };
 
   const handleVariableChange = (name, value) => {
@@ -60,9 +245,28 @@ function App() {
     setVariableValues(prefilledVariables || {});
     setResult(null);
     setError(null);
+    setTemplateSaveNotice(null);
     setMode('manual');
     setRightPanel('result');
     agent.reset();
+  };
+
+  const handleTemplateSave = async (updatedTemplate) => {
+    const savedTemplate = await api.updateTemplate(updatedTemplate.id, {
+      name: updatedTemplate.name,
+      scene: updatedTemplate.scene,
+      category: updatedTemplate.category,
+      description: updatedTemplate.description,
+      system_prompt: updatedTemplate.system_prompt,
+      user_prompt: updatedTemplate.user_prompt,
+      variables: updatedTemplate.variables,
+    });
+
+    setTemplates((prev) =>
+      prev.map((template) => (template.id === savedTemplate.id ? savedTemplate : template))
+    );
+    setSelectedTemplate(savedTemplate);
+    setTemplateSaveNotice({ type: 'success', text: '已保存' });
   };
 
   const handleGenerate = async () => {
@@ -121,18 +325,54 @@ function App() {
   const showAgentResult = useAgent && (agent.steps.length > 0 || agent.status !== 'idle');
 
   return (
-    <div className="flex h-screen bg-white">
-      <Sidebar
-        templates={templates}
-        selectedId={selectedTemplate?.id}
-        onSelect={handleSelectTemplate}
-        knowledgeFiles={knowledgeFiles}
-        onKnowledgeFilesChange={setKnowledgeFiles}
-      />
+    <div ref={containerRef} className="flex h-screen bg-white overflow-hidden">
+      <div className="h-full flex-shrink-0 overflow-hidden" style={{ width: sidebarWidth }}>
+        <Sidebar
+          templates={templates}
+          selectedId={selectedTemplate?.id}
+          onSelect={handleSelectTemplate}
+          onCreateTemplate={handleCreateTemplate}
+          knowledgeFiles={knowledgeFiles}
+          onKnowledgeFilesChange={setKnowledgeFiles}
+        />
+      </div>
+      <div
+        onMouseDown={(event) => handleResizeStart('sidebar', event)}
+        className={`group relative h-full flex-shrink-0 cursor-col-resize transition-colors ${
+          dragState?.type === 'sidebar' ? 'bg-blue-50' : 'bg-transparent hover:bg-blue-50'
+        }`}
+        style={{ width: RESIZER_WIDTH }}
+        aria-label="调整侧边栏宽度"
+      >
+        <div
+          className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors ${
+            dragState?.type === 'sidebar' ? 'bg-blue-500' : 'bg-gray-200 group-hover:bg-blue-400'
+          }`}
+        />
+        <div
+          className={`absolute left-1/2 top-1/2 flex h-12 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-white shadow-sm transition-all ${
+            dragState?.type === 'sidebar'
+              ? 'border-blue-300 text-blue-500 shadow-md'
+              : 'border-gray-200 text-gray-400 group-hover:border-blue-200 group-hover:text-blue-500'
+          }`}
+        >
+          <div className="flex gap-0.5">
+            <span className="block h-4 w-px bg-current" />
+            <span className="block h-4 w-px bg-current" />
+          </div>
+        </div>
+      </div>
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex min-w-0 overflow-hidden">
         {/* Left Panel */}
-        <div className="w-1/2 border-r border-gray-200 p-6 overflow-y-auto flex flex-col">
+        <div
+          className="flex-shrink-0 p-6 overflow-y-auto flex flex-col min-w-0"
+          style={{
+            width: isEditorCollapsed ? 0 : editorWidth,
+            padding: isEditorCollapsed ? 0 : undefined,
+            overflow: isEditorCollapsed ? 'hidden' : undefined,
+          }}
+        >
           {/* Mode Toggle */}
           <div className="flex items-center gap-1 mb-4 p-1 bg-gray-100 rounded-lg w-fit">
             <button
@@ -169,7 +409,14 @@ function App() {
           {/* Manual Mode */}
           {mode === 'manual' && (
             <>
-              <TemplateEditor template={selectedTemplate} />
+              <TemplateEditor
+                key={`${selectedTemplate?.id || 'new'}-${selectedTemplate?.version || 0}`}
+                template={selectedTemplate}
+                onSave={handleTemplateSave}
+                onCreate={handleCreateTemplateSave}
+                saveNotice={templateSaveNotice}
+                existingScenes={templates}
+              />
 
               {selectedTemplate && (
                 <div className="mt-6 space-y-6">
@@ -245,9 +492,47 @@ function App() {
             </>
           )}
         </div>
+        <div
+          onMouseDown={(event) => handleResizeStart('editor', event)}
+          className={`group relative h-full flex-shrink-0 cursor-col-resize transition-colors ${
+            dragState?.type === 'editor' ? 'bg-blue-50' : 'bg-transparent hover:bg-blue-50'
+          }`}
+          style={{ width: RESIZER_WIDTH }}
+          aria-label="调整编辑区宽度"
+        >
+          <div
+            className={`absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors ${
+              dragState?.type === 'editor' ? 'bg-blue-500' : 'bg-gray-200 group-hover:bg-blue-400'
+            }`}
+          />
+          <div
+            className={`absolute left-1/2 top-1/2 flex h-12 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-white shadow-sm transition-all ${
+              dragState?.type === 'editor'
+                ? 'border-blue-300 text-blue-500 shadow-md'
+                : 'border-gray-200 text-gray-400 group-hover:border-blue-200 group-hover:text-blue-500'
+            }`}
+          >
+            <div className="flex gap-0.5">
+              <span className="block h-4 w-px bg-current" />
+              <span className="block h-4 w-px bg-current" />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleEditorCollapsed();
+            }}
+            className="absolute left-1/2 top-4 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition hover:border-blue-200 hover:text-blue-600"
+            aria-label={isEditorCollapsed ? '展开编辑区' : '收起编辑区'}
+            title={isEditorCollapsed ? '展开编辑区' : '收起编辑区'}
+          >
+            {isEditorCollapsed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
+          </button>
+        </div>
 
         {/* Right Panel */}
-        <div className="w-1/2 flex flex-col overflow-hidden">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-l border-gray-200">
           {/* Right panel tabs */}
           <div className="flex items-center border-b border-gray-200 px-4 pt-3">
             <button

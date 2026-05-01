@@ -3,7 +3,6 @@ import {
   Clock,
   Star,
   ChevronRight,
-  Filter,
   Loader2,
   DollarSign,
   Zap,
@@ -25,31 +24,34 @@ export default function History() {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
+    const loadHistory = async () => {
+      setLoading(true);
+      try {
+        const data = await api.getHistory(filter);
+        setHistory(data.items);
+        setTotal(data.total);
+      } catch (err) {
+        console.error('Failed to load history:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadHistory();
-    loadStats();
   }, [filter]);
 
-  const loadHistory = async () => {
-    setLoading(true);
-    try {
-      const data = await api.getHistory(filter);
-      setHistory(data.items);
-      setTotal(data.total);
-    } catch (err) {
-      console.error('Failed to load history:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await api.getCostStats();
+        setStats(data);
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    };
 
-  const loadStats = async () => {
-    try {
-      const data = await api.getCostStats();
-      setStats(data);
-    } catch (err) {
-      console.error('Failed to load stats:', err);
-    }
-  };
+    loadStats();
+  }, []);
 
   const handleViewDetail = async (id) => {
     setSelectedId(id);
@@ -67,8 +69,13 @@ export default function History() {
   const handleToggleFavorite = async (id, currentValue) => {
     try {
       await api.updateHistory(id, { is_favorite: !currentValue });
+      const nextValue = !currentValue;
+
       setHistory((prev) =>
-        prev.map((h) => (h.id === id ? { ...h, is_favorite: !h.is_favorite } : h))
+        prev.map((h) => (h.id === id ? { ...h, is_favorite: nextValue } : h))
+      );
+      setDetailData((prev) =>
+        prev && prev.id === id ? { ...prev, is_favorite: nextValue } : prev
       );
     } catch (err) {
       console.error('Failed to toggle favorite:', err);

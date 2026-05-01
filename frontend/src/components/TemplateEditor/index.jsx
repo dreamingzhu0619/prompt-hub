@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 function extractPromptVariables(prompt) {
@@ -14,6 +15,32 @@ function createVariableDraft(index = 0) {
   };
 }
 
+function SectionCard({ title, description, collapsed, onToggle, actions, children }) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex items-start justify-between gap-4 px-5 py-4">
+        <div>
+          <h3 className="text-base font-semibold text-gray-800">{title}</h3>
+          {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+        </div>
+        <div className="flex items-center gap-2">
+          {actions}
+          <button
+            type="button"
+            onClick={onToggle}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+            aria-label={collapsed ? `展开${title}` : `收起${title}`}
+            title={collapsed ? `展开${title}` : `收起${title}`}
+          >
+            {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
+        </div>
+      </div>
+      {!collapsed && <div className="border-t border-gray-100 px-5 py-4">{children}</div>}
+    </section>
+  );
+}
+
 export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes }) {
   const isNew = template && !template.id;
   const [name, setName] = useState(template?.name || '');
@@ -25,6 +52,8 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   const [variables, setVariables] = useState(template?.variables || []);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
+  const [isPromptCollapsed, setIsPromptCollapsed] = useState(false);
+  const [isVariableDefinitionCollapsed, setIsVariableDefinitionCollapsed] = useState(false);
 
   useEffect(() => {
     setName(template?.name || '');
@@ -35,6 +64,8 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     setUserPrompt(template?.user_prompt || '');
     setVariables(template?.variables || []);
     setMessage(null);
+    setIsPromptCollapsed(false);
+    setIsVariableDefinitionCollapsed(false);
   }, [template]);
 
   if (!template) {
@@ -298,43 +329,48 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          System Prompt
-        </label>
-        <textarea
-          value={systemPrompt}
-          onChange={(e) => setSystemPrompt(e.target.value)}
-          placeholder="设定 AI 的角色和行为规则..."
-          className="w-full h-24 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          User Prompt 模板
-        </label>
-        <textarea
-          value={userPrompt}
-          onChange={(e) => setUserPrompt(e.target.value)}
-          placeholder="用户提交给 AI 的内容模板，使用 {{variable}} 插入变量..."
-          className="w-full h-32 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 font-mono"
-        />
-        <p className="mt-2 text-xs text-gray-500">
-          使用 <code>{'{{variable_name}}'}</code> 插入变量占位符。
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
+      <SectionCard
+        title="Prompt"
+        description="配置 System Prompt 和 User Prompt 模板。"
+        collapsed={isPromptCollapsed}
+        onToggle={() => setIsPromptCollapsed((prev) => !prev)}
+      >
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              变量定义
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              System Prompt
             </label>
-            <p className="text-xs text-gray-500 mt-1">
-              这里定义手动模式下展示哪些输入项，不再局限于岗位名称和 JD。
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder="设定 AI 的角色和行为规则..."
+              className="w-full h-24 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              User Prompt 模板
+            </label>
+            <textarea
+              value={userPrompt}
+              onChange={(e) => setUserPrompt(e.target.value)}
+              placeholder="用户提交给 AI 的内容模板，使用 {{variable}} 插入变量..."
+              className="w-full h-32 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-200 rounded-md bg-white resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 font-mono"
+            />
+            <p className="mt-2 text-xs text-gray-500">
+              使用 <code>{'{{variable_name}}'}</code> 插入变量占位符。
             </p>
           </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="变量定义"
+        description="定义手动模式下展示哪些输入项。"
+        collapsed={isVariableDefinitionCollapsed}
+        onToggle={() => setIsVariableDefinitionCollapsed((prev) => !prev)}
+        actions={
           <button
             type="button"
             onClick={handleAddVariable}
@@ -342,103 +378,105 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
           >
             添加变量
           </button>
-        </div>
-
-        {promptVariables.length > 0 && (
-          <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-gray-600">
-                模板中检测到的占位符: {promptVariables.join(', ')}
-              </div>
-              {missingDefinitions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleAddMissingVariables}
-                  className="text-xs text-blue-600 hover:text-blue-700"
-                >
-                  补全缺失变量
-                </button>
-              )}
-            </div>
-            {missingDefinitions.length > 0 && (
-              <p className="mt-1 text-xs text-amber-600">
-                尚未定义: {missingDefinitions.join(', ')}
-              </p>
-            )}
-          </div>
-        )}
-
-        {variables.length === 0 ? (
-          <div className="rounded-md border border-dashed border-gray-300 px-3 py-6 text-sm text-center text-gray-500">
-            还没有变量。你可以手动添加，也可以先在模板里写入占位符再补全定义。
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {variables.map((item, index) => (
-              <div key={`${item.name || 'variable'}-${index}`} className="rounded-md border border-gray-200 p-3 space-y-3">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      变量名
-                    </label>
-                    <input
-                      type="text"
-                      value={item.name || ''}
-                      onChange={(e) => handleVariableChange(index, 'name', e.target.value)}
-                      placeholder="例如 company"
-                      className="w-full px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      展示名称
-                    </label>
-                    <input
-                      type="text"
-                      value={item.label || ''}
-                      onChange={(e) => handleVariableChange(index, 'label', e.target.value)}
-                      placeholder="例如 目标公司"
-                      className="w-full px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
+        }
+      >
+        <div className="space-y-3">
+          {promptVariables.length > 0 && (
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs text-gray-600">
+                  模板中检测到的占位符: {promptVariables.join(', ')}
                 </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="text-xs font-medium text-gray-600">
-                    输入类型
-                  </label>
-                  <select
-                    value={item.type || 'text'}
-                    onChange={(e) => handleVariableChange(index, 'type', e.target.value)}
-                    className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="text">单行文本</option>
-                    <option value="textarea">多行文本</option>
-                  </select>
-
-                  <label className="inline-flex items-center gap-2 text-sm text-gray-600">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(item.required)}
-                      onChange={(e) => handleVariableChange(index, 'required', e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 cursor-pointer focus:ring-blue-500"
-                    />
-                    必填
-                  </label>
-
+                {missingDefinitions.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => handleRemoveVariable(index)}
-                    className="ml-auto px-2.5 py-1.5 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50"
+                    onClick={handleAddMissingVariables}
+                    className="text-xs text-blue-600 hover:text-blue-700"
                   >
-                    删除
+                    补全缺失变量
                   </button>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              {missingDefinitions.length > 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  尚未定义: {missingDefinitions.join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+
+          {variables.length === 0 ? (
+            <div className="rounded-md border border-dashed border-gray-300 px-3 py-6 text-sm text-center text-gray-500">
+              还没有变量。你可以手动添加，也可以先在模板里写入占位符再补全定义。
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {variables.map((item, index) => (
+                <div key={`${item.name || 'variable'}-${index}`} className="rounded-md border border-gray-200 p-3 space-y-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        变量名
+                      </label>
+                      <input
+                        type="text"
+                        value={item.name || ''}
+                        onChange={(e) => handleVariableChange(index, 'name', e.target.value)}
+                        placeholder="例如 company"
+                        className="w-full px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        展示名称
+                      </label>
+                      <input
+                        type="text"
+                        value={item.label || ''}
+                        onChange={(e) => handleVariableChange(index, 'label', e.target.value)}
+                        placeholder="例如 目标公司"
+                        className="w-full px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="text-xs font-medium text-gray-600">
+                      输入类型
+                    </label>
+                    <select
+                      value={item.type || 'text'}
+                      onChange={(e) => handleVariableChange(index, 'type', e.target.value)}
+                      className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="text">单行文本</option>
+                      <option value="textarea">多行文本</option>
+                    </select>
+
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(item.required)}
+                        onChange={(e) => handleVariableChange(index, 'required', e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 cursor-pointer focus:ring-blue-500"
+                      />
+                      必填
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVariable(index)}
+                      className="ml-auto px-2.5 py-1.5 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50"
+                    >
+                      删除
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {message?.type === 'error' && (
         <p className="text-sm text-red-500">

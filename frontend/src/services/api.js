@@ -22,6 +22,38 @@ export const api = {
     return res.data;
   },
 
+  async createTemplate(payload) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      return { id: Date.now(), ...payload, version: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    }
+    const res = await http.post('/prompts', payload);
+    return res.data;
+  },
+
+  async deleteTemplate(id) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      return;
+    }
+    await http.delete(`/prompts/${id}`);
+  },
+
+  async updateTemplate(id, payload) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      const existing = mockTemplates.find((t) => t.id === id);
+      return {
+        ...existing,
+        ...payload,
+        id,
+        version: (existing?.version || 1) + 1,
+      };
+    }
+    const res = await http.put(`/prompts/${id}`, payload);
+    return res.data;
+  },
+
   // Models
   async getModels() {
     if (useMock) return mockModels;

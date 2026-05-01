@@ -20,8 +20,7 @@ export default function HistoryDetail({ data, loading, onClose, onToggleFavorite
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
-  const [noteEditing, setNoteEditing] = useState(false);
-  const [noteValue, setNoteValue] = useState('');
+  const [showResult, setShowResult] = useState(true);
 
   const handleCopyResult = async () => {
     if (!data) return;
@@ -116,9 +115,9 @@ export default function HistoryDetail({ data, loading, onClose, onToggleFavorite
       </div>
 
       {/* Note */}
-      {(data.note || noteEditing) && (
+      {data.note && (
         <div className="mb-3 text-xs text-gray-500 italic border-l-2 border-yellow-300 pl-2">
-          {data.note || '暂无备注'}
+          {data.note}
         </div>
       )}
 
@@ -207,11 +206,21 @@ export default function HistoryDetail({ data, loading, onClose, onToggleFavorite
         )}
 
         {/* Result */}
-        <div className="border border-gray-200 rounded-lg p-3">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">生成结果</h4>
-          <div className="prose prose-sm max-w-none">
-            <ReactMarkdown>{data.result}</ReactMarkdown>
-          </div>
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowResult(!showResult)}
+            className="flex items-center justify-between w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <span className="text-sm font-medium text-gray-700">生成结果</span>
+            {showResult ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+          {showResult && (
+            <div className="p-3 border-t border-gray-200 bg-white">
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown>{data.result}</ReactMarkdown>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
