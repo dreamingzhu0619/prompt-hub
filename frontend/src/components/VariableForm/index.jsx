@@ -15,7 +15,7 @@ export default function VariableForm({ variables, values, onChange }) {
               value={values[v.name] || ''}
               onChange={(e) => onChange(v.name, e.target.value)}
               placeholder={`请输入${v.label}`}
-              className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-24 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md resize-none cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             />
           ) : (
             <input
@@ -23,7 +23,7 @@ export default function VariableForm({ variables, values, onChange }) {
               value={values[v.name] || ''}
               onChange={(e) => onChange(v.name, e.target.value)}
               placeholder={`请输入${v.label}`}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             />
           )}
         </div>

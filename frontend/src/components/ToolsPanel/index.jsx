@@ -129,7 +129,7 @@ function ToolsPanel({ onSearchSelectionChange, onKnowledgeSelectionChange }) {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="输入搜索关键词..."
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             />
             <button
               onClick={handleSearch}
@@ -215,7 +215,7 @@ function ToolsPanel({ onSearchSelectionChange, onKnowledgeSelectionChange }) {
               onChange={(e) => setKnowledgeQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleKnowledgeSearch()}
               placeholder="输入知识库检索关键词..."
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 border border-gray-300 rounded-md cursor-text focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             />
             <button
               onClick={handleKnowledgeSearch}

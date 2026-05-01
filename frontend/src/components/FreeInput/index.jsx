@@ -48,7 +48,7 @@ function FreeInput({ templates, onIntentResolved }) {
           },
         ]);
       }
-    } catch (err) {
+    } catch {
       setConversation((prev) => [
         ...prev,
         { role: 'assistant', type: 'error', content: '意图识别失败，请重试。' },
@@ -223,7 +223,7 @@ function FreeInput({ templates, onIntentResolved }) {
                 value={feedbackNote}
                 onChange={(e) => setFeedbackNote(e.target.value)}
                 placeholder="简要说明错误原因..."
-                className="flex-1 text-xs px-2 py-1 border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+                className="flex-1 text-xs px-2 py-1 text-gray-900 placeholder:text-gray-400 border border-blue-300 rounded cursor-text focus:outline-none focus:ring-1 focus:ring-blue-400"
               />
               <button
                 onClick={handleSubmitNegativeFeedback}
@@ -250,7 +250,7 @@ function FreeInput({ templates, onIntentResolved }) {
           onKeyDown={handleKeyDown}
           placeholder="描述你的需求，例如：帮我优化简历..."
           rows={2}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 resize-none cursor-text focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <button
           onClick={handleSubmit}

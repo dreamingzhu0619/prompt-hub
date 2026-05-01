@@ -14,7 +14,7 @@ export default function Settings({
         <select
           value={selectedModel}
           onChange={(e) => onModelChange(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md bg-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
         >
           {models.map((m) => (
             <option key={m.id} value={m.id}>

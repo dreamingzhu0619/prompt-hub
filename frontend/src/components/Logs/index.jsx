@@ -26,10 +26,25 @@ export default function Logs() {
   const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
+    const loadLogs = async () => {
+      setLoading(true);
+      try {
+        const data = await api.getLogs({
+          level: levelFilter || undefined,
+          category: categoryFilter === 'all' ? undefined : categoryFilter,
+        });
+        setLogs(data);
+      } catch (err) {
+        console.error('Failed to load logs:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadLogs();
   }, [levelFilter, categoryFilter]);
 
-  const loadLogs = async () => {
+  const handleRefresh = async () => {
     setLoading(true);
     try {
       const data = await api.getLogs({
@@ -64,7 +79,7 @@ export default function Logs() {
           操作日志
         </h2>
         <button
-          onClick={loadLogs}
+          onClick={handleRefresh}
           className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
         >
           <RefreshCw size={12} />
@@ -80,7 +95,7 @@ export default function Logs() {
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
-            className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-600"
+            className="text-xs border border-gray-200 rounded px-2 py-1 bg-white text-gray-900 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="">全部级别</option>
             <option value="error">错误</option>
