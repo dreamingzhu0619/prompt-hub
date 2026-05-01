@@ -199,8 +199,15 @@ module.exports = {
     timeoutMs: Number(process.env.TAVILY_TIMEOUT_MS || 15000),
     includeRawContent: process.env.TAVILY_INCLUDE_RAW_CONTENT === "true",
   },
+  knowledge: {
+    maxUploadBytes: Number(process.env.KNOWLEDGE_MAX_UPLOAD_BYTES || 2 * 1024 * 1024),
+    maxResults: Number(process.env.KNOWLEDGE_MAX_RESULTS || 10),
+    previewChars: Number(process.env.KNOWLEDGE_PREVIEW_CHARS || 300),
+    contentChars: Number(process.env.KNOWLEDGE_CONTENT_CHARS || 4000),
+  },
   paths: {
     root: __dirname,
     dataDir,
+    knowledgeDir: path.join(dataDir, "knowledge"),
   },
 };

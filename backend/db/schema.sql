@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS generations (
   temperature REAL NOT NULL DEFAULT 0.7,
   variables TEXT NOT NULL,
   search_results TEXT,
+  knowledge_results TEXT,
   rendered_prompt TEXT NOT NULL,
   result TEXT NOT NULL,
   prompt_tokens INTEGER NOT NULL DEFAULT 0,

@@ -52,6 +52,41 @@ function buildSearchContext(searchResults) {
   )}`;
 }
 
+function normalizeKnowledgeResults(input) {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  return input
+    .map((item) => ({
+      file: String(item?.file || "").trim(),
+      score: Number(item?.score || 0),
+      preview: String(item?.preview || "").trim(),
+      content: String(item?.content || "").trim(),
+    }))
+    .filter((item) => item.file || item.preview || item.content);
+}
+
+function buildKnowledgeContext(knowledgeResults) {
+  if (knowledgeResults.length === 0) {
+    return "";
+  }
+
+  const lines = knowledgeResults.map((item, index) => {
+    return [
+      `[知识库片段 ${index + 1}]`,
+      `文件: ${item.file || "未命名"}`,
+      `相关度: ${item.score > 0 ? `${Math.round(item.score * 100)}%` : "未知"}`,
+      `摘要: ${item.preview || "无"}`,
+      `内容: ${item.content || item.preview || "无"}`,
+    ].join("\n");
+  });
+
+  return `以下是用户选中的知识库内容，请优先结合这些内部资料作答，不要忽略其中细节：\n\n${lines.join(
+    "\n\n"
+  )}`;
+}
+
 router.post("/", async (req, res, next) => {
   const startedAt = Date.now();
   const {
@@ -60,6 +95,7 @@ router.post("/", async (req, res, next) => {
     model,
     temperature = 0.7,
     search_results: searchResultsInput,
+    knowledge_results: knowledgeResultsInput,
   } = req.body || {};
   const selectedModel = model || require("../config").llm.defaultModel;
 
@@ -80,11 +116,12 @@ router.post("/", async (req, res, next) => {
   }
 
   const searchResults = normalizeSearchResults(searchResultsInput);
+  const knowledgeResults = normalizeKnowledgeResults(knowledgeResultsInput);
   const searchContext = buildSearchContext(searchResults);
+  const knowledgeContext = buildKnowledgeContext(knowledgeResults);
   const templatePrompt = renderTemplate(template, variables);
-  const renderedPrompt = searchContext
-    ? `${searchContext}\n\n---\n\n${templatePrompt}`
-    : templatePrompt;
+  const contexts = [knowledgeContext, searchContext].filter(Boolean);
+  const renderedPrompt = contexts.length > 0 ? `${contexts.join("\n\n---\n\n")}\n\n---\n\n${templatePrompt}` : templatePrompt;
 
   try {
     const llmResponse = await generate({
@@ -103,6 +140,7 @@ router.post("/", async (req, res, next) => {
         temperature,
         variables,
         search_results,
+        knowledge_results,
         rendered_prompt,
         result,
         prompt_tokens,
@@ -110,7 +148,7 @@ router.post("/", async (req, res, next) => {
         total_tokens,
         cost,
         duration_ms
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
 
     const record = insert.run(
@@ -120,6 +158,7 @@ router.post("/", async (req, res, next) => {
       temperature,
       JSON.stringify(variables),
       searchResults.length > 0 ? JSON.stringify(searchResults) : null,
+      knowledgeResults.length > 0 ? JSON.stringify(knowledgeResults) : null,
       renderedPrompt,
       llmResponse.result,
       llmResponse.tokens.prompt,
@@ -164,11 +203,29 @@ router.post("/", async (req, res, next) => {
       );
     }
 
+    if (knowledgeResults.length > 0) {
+      db.prepare(
+        `INSERT INTO execution_steps (
+          generation_id, step_type, step_name, input, output, status
+        ) VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(
+        record.lastInsertRowid,
+        "tool",
+        "knowledge_context",
+        JSON.stringify({
+          count: knowledgeResults.length,
+        }),
+        JSON.stringify(knowledgeResults),
+        "completed"
+      );
+    }
+
     log("info", "generate", "完成手动生成", {
       generation_id: record.lastInsertRowid,
       template_id: template.id,
       model: selectedModel,
       search_results_count: searchResults.length,
+      knowledge_results_count: knowledgeResults.length,
     });
 
     return res.status(201).json({

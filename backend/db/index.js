@@ -71,6 +71,7 @@ function parseTemplate(row) {
 
 runSchema();
 ensureColumn("generations", "search_results", "TEXT");
+ensureColumn("generations", "knowledge_results", "TEXT");
 seedPromptTemplates();
 
 module.exports = {

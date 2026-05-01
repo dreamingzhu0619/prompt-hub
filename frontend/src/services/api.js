@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults } from './mock/templates';
 
-const useMock = import.meta.env.VITE_USE_MOCK !== 'false';
+const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
 const http = axios.create({
   baseURL: '/api',
@@ -51,10 +51,10 @@ export const api = {
       await new Promise((r) => setTimeout(r, 500));
       return { filename: file.name, size: file.size, uploaded_at: new Date().toISOString() };
     }
-    const form = new FormData();
-    form.append('file', file);
-    const res = await http.post('/knowledge/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    const content = await file.text();
+    const res = await http.post('/knowledge/upload', {
+      filename: file.name,
+      content,
     });
     return res.data;
   },
