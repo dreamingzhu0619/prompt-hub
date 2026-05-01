@@ -24,6 +24,15 @@ const TOOL_LABELS = {
   knowledge_search: '知识库检索',
 };
 
+const RESULT_PREVIEW_LENGTH = 280;
+
+function truncateText(text, maxLength = RESULT_PREVIEW_LENGTH) {
+  const normalized = String(text || '').trim();
+  if (!normalized) return '';
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength)}...`;
+}
+
 function StepIcon({ step, isLatest, agentStatus }) {
   const isRunning = isLatest && agentStatus === 'running';
 
@@ -96,7 +105,19 @@ function StepDetail({ step }) {
           <div key={i} className="text-xs bg-gray-50 p-2 rounded border-l-2 border-green-300">
             {item.title && <p className="font-medium text-gray-700">{item.title}</p>}
             {item.file && <p className="font-medium text-gray-700">{item.file} (score: {item.score})</p>}
-            <p className="text-gray-600 mt-0.5">{item.content || item.preview}</p>
+            {item.url && (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 block text-blue-600 hover:text-blue-700 break-all"
+              >
+                {item.url}
+              </a>
+            )}
+            <p className="text-gray-600 mt-1 whitespace-pre-wrap break-words">
+              {truncateText(item.preview || item.content)}
+            </p>
           </div>
         ))}
       </div>
@@ -148,6 +169,7 @@ function StepItem({ step, isLatest, agentStatus }) {
 
 export default function AgentSteps({ steps, finalResult, status, error }) {
   const [copied, setCopied] = useState(false);
+  const effectiveStatus = finalResult && status === 'running' ? 'completed' : status;
 
   const handleCopy = async () => {
     if (!finalResult) return;
@@ -156,7 +178,7 @@ export default function AgentSteps({ steps, finalResult, status, error }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (steps.length === 0 && status === 'idle') {
+  if (steps.length === 0 && effectiveStatus === 'idle') {
     return (
       <div className="flex items-center justify-center h-full text-gray-400 text-sm">
         Agent 执行结果将显示在这里
@@ -170,18 +192,18 @@ export default function AgentSteps({ steps, finalResult, status, error }) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
           Agent 执行链路
-          {status === 'running' && (
+          {effectiveStatus === 'running' && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">
               <Loader2 size={10} className="animate-spin" />
               执行中
             </span>
           )}
-          {status === 'completed' && (
+          {effectiveStatus === 'completed' && (
             <span className="inline-flex items-center px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">
               已完成
             </span>
           )}
-          {status === 'error' && (
+          {effectiveStatus === 'error' && (
             <span className="inline-flex items-center px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded-full">
               出错
             </span>
@@ -206,7 +228,7 @@ export default function AgentSteps({ steps, finalResult, status, error }) {
               key={step.id || index}
               step={step}
               isLatest={index === steps.length - 1}
-              agentStatus={status}
+              agentStatus={effectiveStatus}
             />
           ))}
         </div>

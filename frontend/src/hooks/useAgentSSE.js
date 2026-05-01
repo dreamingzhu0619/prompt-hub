@@ -42,8 +42,8 @@ export function useAgentSSE() {
         index++;
         mockTimerRef.current = setTimeout(emitNext, 1200 + Math.random() * 800);
       } else {
-        setFinalResult(mockResult);
         setStatus('completed');
+        setFinalResult(mockResult);
       }
     };
 
@@ -110,8 +110,8 @@ export function useAgentSSE() {
     es.addEventListener('result', (event) => {
       try {
         const data = JSON.parse(event.data);
-        setFinalResult(data);
         setStatus('completed');
+        setFinalResult(data);
         es.close();
         eventSourceRef.current = null;
       } catch (e) {
