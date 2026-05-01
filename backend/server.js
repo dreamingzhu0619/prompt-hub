@@ -9,6 +9,8 @@ const agentRouter = require("./routes/agent");
 const modelsRouter = require("./routes/models");
 const searchRouter = require("./routes/search");
 const knowledgeRouter = require("./routes/knowledge");
+const historyRouter = require("./routes/history");
+const logsRouter = require("./routes/logs");
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.use("/api/agent", agentRouter);
 app.use("/api/models", modelsRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/knowledge", knowledgeRouter);
+app.use("/api/history", historyRouter);
+app.use("/api/logs", logsRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: "接口不存在" });

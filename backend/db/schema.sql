@@ -28,7 +28,10 @@ CREATE TABLE IF NOT EXISTS generations (
   total_tokens INTEGER NOT NULL DEFAULT 0,
   cost REAL NOT NULL DEFAULT 0,
   duration_ms INTEGER NOT NULL DEFAULT 0,
+  is_favorite INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (template_id) REFERENCES prompt_templates(id)
 );
 

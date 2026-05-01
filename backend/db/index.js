@@ -51,6 +51,18 @@ function seedPromptTemplates() {
   insertMany(seedPrompts);
 }
 
+function parseJson(value, fallback = null) {
+  if (value == null || value === "") {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return fallback;
+  }
+}
+
 function log(level, category, message, metadata) {
   db.prepare(`
     INSERT INTO logs (level, category, message, metadata)
@@ -72,10 +84,22 @@ function parseTemplate(row) {
 runSchema();
 ensureColumn("generations", "search_results", "TEXT");
 ensureColumn("generations", "knowledge_results", "TEXT");
+ensureColumn("generations", "is_favorite", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("generations", "note", "TEXT");
+ensureColumn("generations", "updated_at", "TEXT");
+db.exec(
+  `UPDATE generations
+   SET updated_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+   WHERE updated_at IS NULL`
+);
+db.exec(
+  "CREATE INDEX IF NOT EXISTS idx_generations_favorite_created_at ON generations(is_favorite, created_at DESC)"
+);
 seedPromptTemplates();
 
 module.exports = {
   db,
   log,
+  parseJson,
   parseTemplate,
 };
