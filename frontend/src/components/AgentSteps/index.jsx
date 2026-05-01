@@ -45,6 +45,9 @@ function StepIcon({ step, isLatest, agentStatus }) {
   if (step.type === 'tool_result') {
     return <CheckCircle2 size={16} className="text-green-500" />;
   }
+  if (step.type === 'error') {
+    return <AlertCircle size={16} className="text-red-500" />;
+  }
   return <CheckCircle2 size={16} className="text-gray-400" />;
 }
 
@@ -81,6 +84,14 @@ function StepDetail({ step }) {
     const results = Array.isArray(step.result) ? step.result : [step.result];
     return (
       <div className="space-y-2">
+        {step.params && Object.keys(step.params).length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 font-medium">参数:</p>
+            <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto">
+              {JSON.stringify(step.params, null, 2)}
+            </pre>
+          </div>
+        )}
         {results.map((item, i) => (
           <div key={i} className="text-xs bg-gray-50 p-2 rounded border-l-2 border-green-300">
             {item.title && <p className="font-medium text-gray-700">{item.title}</p>}
@@ -90,6 +101,10 @@ function StepDetail({ step }) {
         ))}
       </div>
     );
+  }
+
+  if (step.type === 'error') {
+    return <p className="text-sm text-red-600 whitespace-pre-wrap">{step.content}</p>;
   }
 
   return null;

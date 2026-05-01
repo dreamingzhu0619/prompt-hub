@@ -155,6 +155,7 @@ async function runAgentTask({ agentId, template, variables, model, toolDefinitio
     state.generation_id = record.lastInsertRowid;
     state.status = "completed";
     state.result = result.result;
+    state.duration_ms = Date.now() - startedAt;
 
     attachGenerationToSteps(agentId, state.generation_id);
 
@@ -162,6 +163,8 @@ async function runAgentTask({ agentId, template, variables, model, toolDefinitio
       generation_id: state.generation_id,
       result: result.result,
       tokens: result.tokens,
+      duration_ms: state.duration_ms,
+      cost: 0,
     };
 
     emitAgentEvent(agentId, "result", payload);

@@ -50,6 +50,40 @@ export function useAgentSSE() {
     mockTimerRef.current = setTimeout(emitNext, 600);
   }, []);
 
+  const normalizeStep = useCallback((data) => {
+    if (data.step_type === 'reasoning') {
+      return {
+        type: 'thinking',
+        content: data.output?.thought || data.output?.raw_response || '',
+        raw: data,
+      };
+    }
+
+    if (data.step_type === 'tool') {
+      return {
+        type: 'tool_result',
+        tool: data.step_name,
+        result: data.output?.results || data.output || [],
+        params: data.input?.tool_input || {},
+        raw: data,
+      };
+    }
+
+    if (data.step_type === 'error') {
+      return {
+        type: 'error',
+        content: data.output?.message || 'Agent 执行出错',
+        raw: data,
+      };
+    }
+
+    return {
+      type: 'thinking',
+      content: data.output?.thought || data.output?.message || 'Agent 执行中',
+      raw: data,
+    };
+  }, []);
+
   const connect = useCallback((agentId) => {
     reset();
     setStatus('running');
@@ -66,7 +100,8 @@ export function useAgentSSE() {
     es.addEventListener('step', (event) => {
       try {
         const data = JSON.parse(event.data);
-        setSteps((prev) => [...prev, { ...data, id: prev.length + 1 }]);
+        const normalized = normalizeStep(data);
+        setSteps((prev) => [...prev, { ...normalized, id: prev.length + 1 }]);
       } catch (e) {
         console.error('Failed to parse step event:', e);
       }
@@ -106,7 +141,7 @@ export function useAgentSSE() {
       es.close();
       eventSourceRef.current = null;
     };
-  }, [reset, startMockStream]);
+  }, [normalizeStep, reset, startMockStream]);
 
   return { steps, finalResult, status, error, connect, stop, reset };
 }
