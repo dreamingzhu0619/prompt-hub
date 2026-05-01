@@ -1,0 +1,17 @@
+{
+  "name": "prompt-hub-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend for Prompt Hub",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  }
+}
