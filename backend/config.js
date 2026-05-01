@@ -24,14 +24,28 @@ module.exports = {
   dbPath: path.resolve(__dirname, process.env.DB_PATH || "./data/app.db"),
   llm: {
     provider: process.env.LLM_PROVIDER || "openai-compatible",
-    baseUrl: process.env.LLM_BASE_URL || "https://api.openai.com/v1",
-    apiKey: process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || "",
-    defaultModel: process.env.LLM_DEFAULT_MODEL || "gpt-4o-mini",
+    baseUrl:
+      process.env.LLM_BASE_URL ||
+      process.env.OPENAI_BASE_URL ||
+      process.env.ANTHROPIC_BASE_URL ||
+      "https://api.openai.com/v1",
+    apiKey:
+      process.env.LLM_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.ANTHROPIC_AUTH_TOKEN ||
+      "",
+    defaultModel:
+      process.env.LLM_DEFAULT_MODEL ||
+      process.env.OPENAI_MODEL ||
+      process.env.ANTHROPIC_MODEL ||
+      "gpt-4o-mini",
     models: parseList(process.env.OPENAI_COMPAT_MODELS, [
       "gpt-4o",
       "gpt-4o-mini",
       "deepseek-chat",
     ]),
+    anthropicVersion: process.env.ANTHROPIC_VERSION || "2023-06-01",
+    maxTokens: Number(process.env.LLM_MAX_TOKENS || 2000),
   },
   paths: {
     root: __dirname,
