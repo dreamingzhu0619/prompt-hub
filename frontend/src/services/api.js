@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults, mockChatReadyResult, mockChatClarificationResult } from './mock/templates';
+import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults, mockKnowledgeFiles, mockKnowledgeSearchResults, mockChatReadyResult, mockChatClarificationResult, mockAgentSteps, mockAgentFinalResult } from './mock/templates';
 
 const useMock = import.meta.env.VITE_USE_MOCK === 'true';
 
@@ -119,5 +119,33 @@ export const api = {
       knowledge_results,
     });
     return res.data;
+  },
+
+  // Agent
+  async startAgent({ template_id, variables, model, temperature, tools }) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 300));
+      return { agent_id: 'mock-agent-' + Date.now() };
+    }
+    const res = await http.post('/agent', {
+      template_id,
+      variables,
+      model,
+      temperature,
+      tools,
+    });
+    return res.data;
+  },
+
+  getMockAgentSteps() {
+    return mockAgentSteps;
+  },
+
+  getMockAgentFinalResult() {
+    return mockAgentFinalResult;
+  },
+
+  getAgentStreamUrl(agentId) {
+    return `/api/agent/${agentId}/stream`;
   },
 };

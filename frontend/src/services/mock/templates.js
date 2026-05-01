@@ -182,6 +182,80 @@ export const mockChatClarificationResult = {
   reasoning: '用户表达了简历相关需求，已匹配到简历优化模板，但还缺少必填信息。',
 };
 
+export const mockAgentSteps = [
+  {
+    type: 'thinking',
+    content: '用户需要优化简历以匹配前端工程师岗位。我需要先搜索该岗位的最新要求和面试重点，然后结合知识库中的简历优化技巧来生成结果。',
+    timestamp: Date.now(),
+  },
+  {
+    type: 'tool_call',
+    tool: 'web_search',
+    params: { query: '2024年前端工程师岗位要求 简历关键词' },
+    timestamp: Date.now() + 1000,
+  },
+  {
+    type: 'tool_result',
+    tool: 'web_search',
+    result: [
+      { title: '前端工程师简历关键词', content: 'React, TypeScript, 性能优化, 组件库, 微前端...' },
+      { title: '2024前端面试趋势', content: '重视工程化能力、跨端开发经验、AI应用...' },
+    ],
+    timestamp: Date.now() + 3000,
+  },
+  {
+    type: 'thinking',
+    content: '搜索结果显示当前前端岗位重视 React/TypeScript 技术栈和工程化能力。让我再检索知识库中是否有相关的简历优化建议。',
+    timestamp: Date.now() + 3500,
+  },
+  {
+    type: 'tool_call',
+    tool: 'knowledge_search',
+    params: { query: '简历优化 STAR法则 量化成果' },
+    timestamp: Date.now() + 4000,
+  },
+  {
+    type: 'tool_result',
+    tool: 'knowledge_search',
+    result: [
+      { file: '前端面试题库.md', score: 0.88, preview: '使用STAR法则：Situation-Task-Action-Result，每条经验都要量化...' },
+    ],
+    timestamp: Date.now() + 5500,
+  },
+  {
+    type: 'thinking',
+    content: '现在我有了足够的上下文信息。结合搜索结果中的岗位关键词和知识库中的简历优化方法，我可以生成优化后的简历了。',
+    timestamp: Date.now() + 6000,
+  },
+];
+
+export const mockAgentFinalResult = {
+  result: `## 优化后的简历（Agent模式）
+
+### 个人信息
+- 姓名：张三
+- 邮箱：zhangsan@example.com
+
+### 核心技能（匹配JD关键词）
+- **前端框架**: React 18 (Hooks/Concurrent), Vue 3, Next.js
+- **类型系统**: TypeScript 高级类型、泛型编程
+- **工程化**: Webpack 5, Vite, CI/CD, Monorepo (Turborepo)
+- **性能优化**: Core Web Vitals, 代码分割, SSR/SSG
+
+### 工作经验
+
+**高级前端工程师 | ABC科技有限公司 | 2021-至今**
+
+- [S] 公司核心产品用户量增长导致性能瓶颈 → [A] 主导前端架构升级，React Class → Hooks + TypeScript → [R] 开发效率提升 30%，线上bug率降低 45%
+- [S] 多团队重复造轮子 → [A] 设计通用组件库（50+ 组件）→ [R] 被 5 个团队 20+ 项目采用，节省约 2000 人时
+- [S] 用户反馈首屏加载慢 → [A] 实施代码分割 + 图片懒加载 + CDN优化 → [R] LCP 从 3.2s 降至 1.1s，转化率提升 12%
+
+> 💡 本次优化基于网络搜索获取的最新岗位要求和知识库中的STAR法则进行了针对性改写。`,
+  tokens: { prompt: 1200, completion: 680, total: 1880 },
+  cost: 0.035,
+  duration_ms: 8500,
+};
+
 export const mockGenerateResult = {
   id: 1,
   result: `## 优化后的简历
