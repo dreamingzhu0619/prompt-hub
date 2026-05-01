@@ -53,7 +53,7 @@ function renderPrompt(template, variableValues) {
   });
 }
 
-export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes, variableValues = {}, requestPreview = 0 }) {
+export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes, variableValues = {}, requestPreview = 0, onVariablesChange }) {
   const isNew = template && !template.id;
   const [name, setName] = useState(template?.name || '');
   const [scene, setScene] = useState(template?.scene || '');
@@ -95,6 +95,13 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
       setIsPromptCollapsed(false);
     }
   }, [requestPreview]);
+
+  // Sync current editing variables to parent
+  useEffect(() => {
+    if (onVariablesChange) {
+      onVariablesChange(variables);
+    }
+  }, [variables, onVariablesChange]);
 
   if (!template) {
     return (
@@ -185,7 +192,15 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   };
 
   const handleAddVariable = () => {
-    setVariables((prev) => [...prev, createVariableDraft(prev.length)]);
+    const draft = createVariableDraft(variables.length);
+    setVariables((prev) => [...prev, draft]);
+    // Auto-insert placeholder into user_prompt at cursor position
+    const placeholder = `{{${draft.name}}}`;
+    const pos = cursorPosRef.current;
+    const before = userPrompt.slice(0, pos);
+    const after = userPrompt.slice(pos);
+    setUserPrompt(before + placeholder + after);
+    cursorPosRef.current = pos + placeholder.length;
   };
 
   const handleRemoveVariable = (index) => {

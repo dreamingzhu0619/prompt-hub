@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Play,
   MessageSquare,
@@ -73,6 +73,7 @@ function App() {
   const [error, setError] = useState(null);
   const [templateSaveNotice, setTemplateSaveNotice] = useState(null);
   const [requestPreview, setRequestPreview] = useState(0);
+  const [editingVariables, setEditingVariables] = useState([]);
   const [mode, setMode] = useState('free'); // 'free' | 'manual'
   const [useAgent, setUseAgent] = useState(false); // Agent mode toggle
   const [rightPanel, setRightPanel] = useState('result'); // 'result' | 'history' | 'logs'
@@ -258,6 +259,10 @@ function App() {
   const handleVariableChange = (name, value) => {
     setVariableValues((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleEditingVariablesChange = useCallback((vars) => {
+    setEditingVariables(vars);
+  }, []);
 
   const handleIntentResolved = (template, prefilledVariables) => {
     setSelectedTemplate(template);
@@ -454,12 +459,13 @@ function App() {
                 existingScenes={templates}
                 variableValues={variableValues}
                 requestPreview={requestPreview}
+                onVariablesChange={handleEditingVariablesChange}
               />
 
               {selectedTemplate && (
                 <div className="mt-6 space-y-6">
                   <VariableForm
-                    variables={selectedTemplate.variables}
+                    variables={editingVariables.length > 0 ? editingVariables : selectedTemplate.variables}
                     values={variableValues}
                     onChange={handleVariableChange}
                     onSave={() => setRequestPreview((n) => n + 1)}
