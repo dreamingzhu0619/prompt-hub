@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import TemplateEditor from './components/TemplateEditor';
 import VariableForm from './components/VariableForm';
 import Settings from './components/Settings';
+import ToolsPanel from './components/ToolsPanel';
 import ResultPanel from './components/ResultPanel';
 import { api } from './services/api';
 
@@ -14,6 +15,7 @@ function App() {
   const [variableValues, setVariableValues] = useState({});
   const [selectedModel, setSelectedModel] = useState('');
   const [temperature, setTemperature] = useState(0.7);
+  const [searchResults, setSearchResults] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -60,6 +62,7 @@ function App() {
         variables: variableValues,
         model: selectedModel,
         temperature,
+        search_results: searchResults.length > 0 ? searchResults : undefined,
       });
       setResult(res);
     } catch (err) {
@@ -97,6 +100,8 @@ function App() {
                 temperature={temperature}
                 onTemperatureChange={setTemperature}
               />
+
+              <ToolsPanel onSelectionChange={setSearchResults} />
 
               {error && (
                 <p className="text-sm text-red-500">{error}</p>

@@ -86,6 +86,34 @@ export const mockModels = [
   { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek' },
 ];
 
+export const mockSearchResults = [
+  {
+    title: '2024年前端工程师面试高频题目汇总',
+    url: 'https://example.com/frontend-interview-2024',
+    content: '前端工程师面试中常见的问题包括：React Hooks原理、虚拟DOM diff算法、性能优化方案、TypeScript类型体操、微前端架构设计等。建议候选人重点准备项目经验描述和技术深度问题。',
+  },
+  {
+    title: '如何写出让HR眼前一亮的简历 - 求职指南',
+    url: 'https://example.com/resume-tips',
+    content: '优秀的简历应该：1. 用数据量化成果（如提升30%性能）；2. 突出与JD匹配的关键词；3. STAR法则描述项目经验；4. 保持一页纸原则；5. 避免千篇一律的自我评价。',
+  },
+  {
+    title: '大厂面试官分享：我们到底在看什么',
+    url: 'https://example.com/interviewer-perspective',
+    content: '面试官关注的核心能力：解决问题的思路、技术深度与广度、沟通表达能力、团队协作经验、学习能力和成长潜力。技术面试不仅看答案对不对，更看思考过程。',
+  },
+  {
+    title: 'React 18新特性与性能优化实践',
+    url: 'https://example.com/react-18-performance',
+    content: 'React 18引入了并发特性(Concurrent Features)、自动批处理(Automatic Batching)、Transitions API等。Suspense配合lazy实现代码分割，useDeferredValue优化大列表渲染。',
+  },
+  {
+    title: '2024年互联网行业薪资报告',
+    url: 'https://example.com/salary-report-2024',
+    content: '根据最新调研，一线城市前端工程师平均薪资：初级15-25K，中级25-40K，高级40-60K，专家/架构师60K+。跳槽涨幅通常在20-30%之间。',
+  },
+];
+
 export const mockGenerateResult = {
   id: 1,
   result: `## 优化后的简历

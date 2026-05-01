@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { mockTemplates, mockModels, mockGenerateResult } from './mock/templates';
+import { mockTemplates, mockModels, mockGenerateResult, mockSearchResults } from './mock/templates';
 
 const useMock = import.meta.env.VITE_USE_MOCK !== 'false';
 
@@ -29,8 +29,18 @@ export const api = {
     return res.data;
   },
 
+  // Search
+  async search(query) {
+    if (useMock) {
+      await new Promise((r) => setTimeout(r, 800));
+      return mockSearchResults;
+    }
+    const res = await http.post('/search', { query });
+    return res.data.results;
+  },
+
   // Generate
-  async generate({ template_id, variables, model, temperature }) {
+  async generate({ template_id, variables, model, temperature, search_results }) {
     if (useMock) {
       await new Promise((r) => setTimeout(r, 1500));
       return mockGenerateResult;
@@ -40,6 +50,7 @@ export const api = {
       variables,
       model,
       temperature,
+      search_results,
     });
     return res.data;
   },
