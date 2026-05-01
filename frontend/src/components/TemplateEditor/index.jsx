@@ -148,16 +148,19 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     }
   }, []);
 
-  const handleInsertVariable = (varName, varLabel) => {
-    const insertion = `${varLabel || varName}：{{${varName}}}`;
+  const insertTextAtCursor = (text) => {
     const pos = cursorPosRef.current;
     const before = userPrompt.slice(0, pos);
     const after = userPrompt.slice(pos);
-    const needNewlineBefore = pos > 0 && before[before.length - 1] !== '\n';
-    const needNewlineAfter = after.length === 0 || after[0] !== '\n';
-    const newText = (needNewlineBefore ? '\n' : '') + insertion + (needNewlineAfter ? '\n' : '');
-    setUserPrompt(before + newText + after);
-    const newPos = pos + newText.length;
+    // Ensure exactly one newline before (unless at very start)
+    const trimmedBefore = before.replace(/\n*$/, '');
+    const prefix = trimmedBefore.length > 0 ? '\n' : '';
+    // Ensure exactly one newline after
+    const trimmedAfter = after.replace(/^\n*/, '');
+    const suffix = '\n';
+    const newPrompt = trimmedBefore + prefix + text + suffix + trimmedAfter;
+    setUserPrompt(newPrompt);
+    const newPos = (trimmedBefore + prefix + text + suffix).length;
     cursorPosRef.current = newPos;
     setTimeout(() => {
       if (userPromptRef.current) {
@@ -166,6 +169,10 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
         userPromptRef.current.selectionEnd = newPos;
       }
     }, 0);
+  };
+
+  const handleInsertVariable = (varName, varLabel) => {
+    insertTextAtCursor(`${varLabel || varName}：{{${varName}}}`);
     setPromptViewMode('edit');
   };
 
@@ -193,16 +200,7 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   const handleAddVariable = () => {
     const draft = createVariableDraft(variables.length);
     setVariables((prev) => [...prev, draft]);
-    // Auto-insert "label：{{name}}\n" into user_prompt at cursor position
-    const insertion = `${draft.label}：{{${draft.name}}}`;
-    const pos = cursorPosRef.current;
-    const before = userPrompt.slice(0, pos);
-    const after = userPrompt.slice(pos);
-    const needNewlineBefore = pos > 0 && before[before.length - 1] !== '\n';
-    const needNewlineAfter = after.length === 0 || after[0] !== '\n';
-    const newText = (needNewlineBefore ? '\n' : '') + insertion + (needNewlineAfter ? '\n' : '');
-    setUserPrompt(before + newText + after);
-    cursorPosRef.current = pos + newText.length;
+    insertTextAtCursor(`${draft.label}：{{${draft.name}}}`);
   };
 
   const handleRemoveVariable = (index) => {
