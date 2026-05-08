@@ -6,6 +6,7 @@ export const mockTemplates = [
     category: '简历',
     system_prompt: '你是一位资深HR和职业顾问。请根据用户提供的JD和简历内容，优化简历使其更匹配目标岗位。',
     user_prompt: '目标岗位JD：\n{{jd}}\n\n我的简历内容：\n{{resume}}\n\n请帮我优化简历，使其更匹配这个岗位要求。',
+    default_tools: ['knowledge_search'],
     variables: [
       { name: 'jd', label: '目标岗位JD', type: 'textarea', required: true },
       { name: 'resume', label: '当前简历内容', type: 'textarea', required: true },
@@ -21,6 +22,7 @@ export const mockTemplates = [
     category: '面试',
     system_prompt: '你是一位面试辅导专家。请根据岗位信息，为用户生成可能的面试问题及参考回答。',
     user_prompt: '岗位名称：{{position}}\n岗位JD：{{jd}}\n\n请生成5个最可能被问到的面试问题，并给出参考回答。',
+    default_tools: ['web_search', 'knowledge_search'],
     variables: [
       { name: 'position', label: '岗位名称', type: 'text', required: true },
       { name: 'jd', label: '岗位JD', type: 'textarea', required: true },
@@ -36,6 +38,7 @@ export const mockTemplates = [
     category: '求职信',
     system_prompt: '你是一位专业的求职信撰写顾问。请根据用户的背景和目标岗位，撰写一封有说服力的求职信。',
     user_prompt: '目标公司：{{company}}\n目标岗位：{{position}}\n我的核心优势：{{strengths}}\n\n请帮我撰写一封专业的求职信。',
+    default_tools: ['knowledge_search'],
     variables: [
       { name: 'company', label: '目标公司', type: 'text', required: true },
       { name: 'position', label: '目标岗位', type: 'text', required: true },
@@ -52,6 +55,7 @@ export const mockTemplates = [
     category: '汇报',
     system_prompt: '你是一位职场写作助手。请根据用户提供的工作内容，生成结构清晰的周报。',
     user_prompt: '本周完成的工作：\n{{done}}\n\n遇到的问题：\n{{problems}}\n\n下周计划：\n{{plan}}\n\n请帮我生成一份结构清晰的周报。',
+    default_tools: [],
     variables: [
       { name: 'done', label: '本周完成的工作', type: 'textarea', required: true },
       { name: 'problems', label: '遇到的问题', type: 'textarea', required: false },
@@ -68,6 +72,7 @@ export const mockTemplates = [
     category: '润色',
     system_prompt: '你是一位资深文案编辑。请根据用户要求的风格和目标受众，对文案进行润色优化。',
     user_prompt: '原始文案：\n{{content}}\n\n目标风格：{{style}}\n目标受众：{{audience}}\n\n请润色这篇文案。',
+    default_tools: ['knowledge_search'],
     variables: [
       { name: 'content', label: '原始文案', type: 'textarea', required: true },
       { name: 'style', label: '目标风格', type: 'text', required: true },

@@ -15,11 +15,6 @@ function createVariableDraft(index = 0) {
   };
 }
 
-const TOOL_OPTIONS = [
-  { id: 'web_search', label: '网络搜索' },
-  { id: 'knowledge_search', label: '知识库检索' },
-];
-
 function SectionCard({ title, description, collapsed, onToggle, actions, children }) {
   return (
     <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -53,8 +48,39 @@ function renderPrompt(template, variableValues) {
   });
 }
 
+function buildVariablePromptLine(varName, varLabel) {
+  return `${varLabel || varName}：{{${varName}}}`;
+}
+
+function normalizeInsertedPromptBlock(text) {
+  return text
+    .replace(/\n{2,}/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .trimEnd();
+}
+
+function appendVariableLines(prompt, lines) {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return prompt;
+  }
+
+  const normalizedPrompt = normalizeInsertedPromptBlock(prompt || '');
+  const normalizedLines = lines
+    .map((line) => String(line || '').trim())
+    .filter(Boolean);
+
+  if (normalizedLines.length === 0) {
+    return normalizedPrompt;
+  }
+
+  return normalizeInsertedPromptBlock(
+    `${normalizedPrompt}${normalizedPrompt ? '\n' : ''}${normalizedLines.join('\n')}`
+  );
+}
+
 export default function TemplateEditor({ template, onSave, onCreate, saveNotice, existingScenes, variableValues = {}, requestPreview = 0, onVariablesChange }) {
   const isNew = template && !template.id;
+  const templateData = template || {};
   const [name, setName] = useState(template?.name || '');
   const [scene, setScene] = useState(template?.scene || '');
   const [category, setCategory] = useState(template?.category || '');
@@ -103,23 +129,15 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     }
   }, [variables, onVariablesChange]);
 
-  if (!template) {
-    return (
-      <div className="flex items-center justify-center h-full text-gray-400">
-        请从左侧选择一个模板
-      </div>
-    );
-  }
-
   const isDirty = isNew ||
-    systemPrompt !== (template.system_prompt || '') ||
-    userPrompt !== (template.user_prompt || '') ||
-    name !== (template.name || '') ||
-    scene !== (template.scene || '') ||
-    category !== (template.category || '') ||
-    description !== (template.description || '') ||
-    JSON.stringify(variables) !== JSON.stringify(template.variables || []) ||
-    JSON.stringify(defaultTools) !== JSON.stringify(template.default_tools || []);
+    systemPrompt !== (templateData.system_prompt || '') ||
+    userPrompt !== (templateData.user_prompt || '') ||
+    name !== (templateData.name || '') ||
+    scene !== (templateData.scene || '') ||
+    category !== (templateData.category || '') ||
+    description !== (templateData.description || '') ||
+    JSON.stringify(variables) !== JSON.stringify(templateData.variables || []) ||
+    JSON.stringify(defaultTools) !== JSON.stringify(templateData.default_tools || []);
 
   const promptVariables = useMemo(() => extractPromptVariables(userPrompt), [userPrompt]);
   const definedVariableNames = useMemo(
@@ -148,19 +166,27 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
     }
   }, []);
 
+  if (!template) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        请从左侧选择一个模板
+      </div>
+    );
+  }
+
   const insertTextAtCursor = (text) => {
     const pos = cursorPosRef.current;
     const before = userPrompt.slice(0, pos);
     const after = userPrompt.slice(pos);
-    // Ensure exactly one newline before (unless at very start)
-    const trimmedBefore = before.replace(/\n*$/, '');
+    const trimmedBefore = before.replace(/\n+$/, '');
+    const trimmedAfter = after.replace(/^\n+/, '');
     const prefix = trimmedBefore.length > 0 ? '\n' : '';
-    // Ensure exactly one newline after
-    const trimmedAfter = after.replace(/^\n*/, '');
-    const suffix = '\n';
-    const newPrompt = trimmedBefore + prefix + text + suffix + trimmedAfter;
-    setUserPrompt(newPrompt);
-    const newPos = (trimmedBefore + prefix + text + suffix).length;
+    const suffix = trimmedAfter.length > 0 ? '\n' : '';
+    const nextPrompt = normalizeInsertedPromptBlock(
+      `${trimmedBefore}${prefix}${text}${suffix}${trimmedAfter}`
+    );
+    setUserPrompt(nextPrompt);
+    const newPos = normalizeInsertedPromptBlock(`${trimmedBefore}${prefix}${text}`).length;
     cursorPosRef.current = newPos;
     setTimeout(() => {
       if (userPromptRef.current) {
@@ -172,7 +198,7 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   };
 
   const handleInsertVariable = (varName, varLabel) => {
-    insertTextAtCursor(`${varLabel || varName}：{{${varName}}}`);
+    insertTextAtCursor(buildVariablePromptLine(varName, varLabel));
     setPromptViewMode('edit');
   };
 
@@ -200,7 +226,7 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   const handleAddVariable = () => {
     const draft = createVariableDraft(variables.length);
     setVariables((prev) => [...prev, draft]);
-    insertTextAtCursor(`${draft.label}：{{${draft.name}}}`);
+    insertTextAtCursor(buildVariablePromptLine(draft.name, draft.label));
   };
 
   const handleRemoveVariable = (index) => {
@@ -208,20 +234,19 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
   };
 
   const handleAddMissingVariables = () => {
-    setVariables((prev) => [
-      ...prev,
-      ...missingDefinitions.map((n) => ({
-        name: n,
-        label: n,
-        type: 'text',
-        required: false,
-      })),
-    ]);
-  };
+    const missingVariableDrafts = missingDefinitions.map((name) => ({
+      name,
+      label: name,
+      type: 'text',
+      required: false,
+    }));
 
-  const toggleDefaultTool = (toolId) => {
-    setDefaultTools((prev) =>
-      prev.includes(toolId) ? prev.filter((item) => item !== toolId) : [...prev, toolId]
+    setVariables((prev) => [...prev, ...missingVariableDrafts]);
+    setUserPrompt((prev) =>
+      appendVariableLines(
+        prev,
+        missingVariableDrafts.map((item) => buildVariablePromptLine(item.name, item.label))
+      )
     );
   };
 
@@ -490,33 +515,6 @@ export default function TemplateEditor({ template, onSave, onCreate, saveNotice,
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                默认工具
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {TOOL_OPTIONS.map((tool) => {
-                  const active = defaultTools.includes(tool.id);
-                  return (
-                    <button
-                      key={tool.id}
-                      type="button"
-                      onClick={() => toggleDefaultTool(tool.id)}
-                      className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                        active
-                          ? 'border-blue-200 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                      }`}
-                    >
-                      {tool.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-2 text-xs text-gray-500">
-                选择该模板默认启用的工具。用户进入模板后可以再手动取消。
-              </p>
-            </div>
           </div>
         ) : (
           <div className="space-y-4">

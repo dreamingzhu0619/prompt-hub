@@ -76,7 +76,7 @@ export default function ResultPanel({ result, loading }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto prose prose-sm max-w-none">
+      <div className="flex-1 overflow-y-auto text-gray-900 prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-900 prose-strong:text-gray-900 prose-li:text-gray-900 prose-a:text-blue-600">
         <ReactMarkdown>{result.result}</ReactMarkdown>
       </div>
 

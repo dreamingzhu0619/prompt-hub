@@ -28,14 +28,35 @@ function ensureColumn(tableName, columnName, definition) {
 function seedPromptTemplates() {
   const count = db.prepare("SELECT COUNT(*) AS count FROM prompt_templates").get().count;
   if (count > 0) {
+    const updateDefaultTools = db.prepare(`
+      UPDATE prompt_templates
+      SET default_tools = @default_tools
+      WHERE name = @name
+        AND scene = @scene
+        AND category = @category
+        AND (default_tools IS NULL OR default_tools = '' OR default_tools = '[]')
+    `);
+
+    const updateMany = db.transaction((prompts) => {
+      for (const prompt of prompts) {
+        updateDefaultTools.run({
+          name: prompt.name,
+          scene: prompt.scene,
+          category: prompt.category,
+          default_tools: JSON.stringify(prompt.default_tools || []),
+        });
+      }
+    });
+
+    updateMany(seedPrompts);
     return;
   }
 
   const insert = db.prepare(`
     INSERT INTO prompt_templates (
-      name, scene, category, description, system_prompt, user_prompt, variables
+      name, scene, category, description, system_prompt, user_prompt, variables, default_tools
     ) VALUES (
-      @name, @scene, @category, @description, @system_prompt, @user_prompt, @variables
+      @name, @scene, @category, @description, @system_prompt, @user_prompt, @variables, @default_tools
     )
   `);
 
@@ -44,6 +65,7 @@ function seedPromptTemplates() {
       insert.run({
         ...prompt,
         variables: JSON.stringify(prompt.variables),
+        default_tools: JSON.stringify(prompt.default_tools || []),
       });
     }
   });
@@ -78,10 +100,12 @@ function parseTemplate(row) {
   return {
     ...row,
     variables: JSON.parse(row.variables),
+    default_tools: parseJson(row.default_tools, []),
   };
 }
 
 runSchema();
+ensureColumn("prompt_templates", "default_tools", "TEXT NOT NULL DEFAULT '[]'");
 ensureColumn("generations", "search_results", "TEXT");
 ensureColumn("generations", "knowledge_results", "TEXT");
 ensureColumn("generations", "is_favorite", "INTEGER NOT NULL DEFAULT 0");

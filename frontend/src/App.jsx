@@ -48,12 +48,48 @@ function readStoredWidth(key, fallback) {
   }
 }
 
+function renderTemplateWithVariables(template, variables) {
+  return String(template || '').replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_, key) => {
+    const value = variables?.[key];
+    return value == null ? '' : String(value);
+  });
+}
+
+function buildToolQuery(template, variables) {
+  const renderedPrompt = renderTemplateWithVariables(template?.user_prompt, variables)
+    .replace(/\s+/g, ' ')
+    .trim();
+  const metadata = [template?.scene, template?.category, template?.name]
+    .filter(Boolean)
+    .join(' ');
+  const variableText = Object.entries(variables || {})
+    .map(([key, value]) => `${key}: ${String(value || '').trim()}`)
+    .filter((item) => !item.endsWith(':'))
+    .join(' ');
+
+  return [metadata, renderedPrompt, variableText]
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 500)
+    .trim();
+}
+
 function getTemplateDefaultTools(template) {
   if (!template || !Array.isArray(template.default_tools)) {
     return [];
   }
 
   return template.default_tools.filter((tool) => AVAILABLE_TOOLS.includes(tool));
+}
+
+function getGenerateErrorMessage(error, fallback) {
+  const message = error?.response?.data?.message || fallback;
+
+  if (message === 'template_id 必填') {
+    return '请先选择一个模板，或先保存当前模板后再生成。';
+  }
+
+  return message;
 }
 
 function App() {
@@ -65,7 +101,9 @@ function App() {
   const [selectedModel, setSelectedModel] = useState('');
   const [temperature, setTemperature] = useState(0.7);
   const [searchResults, setSearchResults] = useState([]);
+  const [selectedSearchIndexes, setSelectedSearchIndexes] = useState([]);
   const [knowledgeResults, setKnowledgeResults] = useState([]);
+  const [selectedKnowledgeIndexes, setSelectedKnowledgeIndexes] = useState([]);
   const [selectedTools, setSelectedTools] = useState([]);
   const [knowledgeFiles, setKnowledgeFiles] = useState([]);
   const [result, setResult] = useState(null);
@@ -215,7 +253,9 @@ function App() {
     setVariableValues({});
     setSelectedTools(getTemplateDefaultTools(template));
     setSearchResults([]);
+    setSelectedSearchIndexes([]);
     setKnowledgeResults([]);
+    setSelectedKnowledgeIndexes([]);
     setResult(null);
     setError(null);
     setTemplateSaveNotice(null);
@@ -239,7 +279,9 @@ function App() {
     setVariableValues({});
     setSelectedTools([]);
     setSearchResults([]);
+    setSelectedSearchIndexes([]);
     setKnowledgeResults([]);
+    setSelectedKnowledgeIndexes([]);
     setResult(null);
     setError(null);
     setTemplateSaveNotice(null);
@@ -258,6 +300,10 @@ function App() {
 
   const handleVariableChange = (name, value) => {
     setVariableValues((prev) => ({ ...prev, [name]: value }));
+    setSearchResults([]);
+    setSelectedSearchIndexes([]);
+    setKnowledgeResults([]);
+    setSelectedKnowledgeIndexes([]);
   };
 
   const handleEditingVariablesChange = useCallback((vars) => {
@@ -269,7 +315,9 @@ function App() {
     setVariableValues(prefilledVariables || {});
     setSelectedTools(getTemplateDefaultTools(template));
     setSearchResults([]);
+    setSelectedSearchIndexes([]);
     setKnowledgeResults([]);
+    setSelectedKnowledgeIndexes([]);
     setResult(null);
     setError(null);
     setTemplateSaveNotice(null);
@@ -303,15 +351,20 @@ function App() {
 
     if (!nextTools.includes('web_search')) {
       setSearchResults([]);
+      setSelectedSearchIndexes([]);
     }
 
     if (!nextTools.includes('knowledge_search')) {
       setKnowledgeResults([]);
+      setSelectedKnowledgeIndexes([]);
     }
   };
 
   const handleGenerate = async () => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate?.id) {
+      setError('请先选择一个模板，或先保存当前模板后再生成。');
+      return;
+    }
 
     const missing = selectedTemplate.variables
       .filter((v) => v.required && !variableValues[v.name]?.trim())
@@ -339,23 +392,55 @@ function App() {
         });
         agent.connect(agent_id);
       } catch (err) {
-        setError(err.response?.data?.message || 'Agent 启动失败');
+        setError(getGenerateErrorMessage(err, 'Agent 启动失败'));
       }
     } else {
       // Manual mode: direct generate
       setLoading(true);
       try {
+        const toolQuery = buildToolQuery(selectedTemplate, variableValues);
+        let resolvedSearchResults = searchResults;
+        let resolvedSearchIndexes = selectedSearchIndexes;
+        let resolvedKnowledgeResults = knowledgeResults;
+        let resolvedKnowledgeIndexes = selectedKnowledgeIndexes;
+
+        if (selectedTools.includes('web_search') && resolvedSearchResults.length === 0 && toolQuery) {
+          try {
+            resolvedSearchResults = await api.search(toolQuery);
+            resolvedSearchIndexes = resolvedSearchResults.map((_, index) => index);
+            setSearchResults(resolvedSearchResults);
+            setSelectedSearchIndexes(resolvedSearchIndexes);
+          } catch (toolError) {
+            console.error('Auto web search failed:', toolError);
+          }
+        }
+
+        if (selectedTools.includes('knowledge_search') && resolvedKnowledgeResults.length === 0 && toolQuery) {
+          try {
+            resolvedKnowledgeResults = await api.searchKnowledge(toolQuery);
+            resolvedKnowledgeIndexes = resolvedKnowledgeResults.map((_, index) => index);
+            setKnowledgeResults(resolvedKnowledgeResults);
+            setSelectedKnowledgeIndexes(resolvedKnowledgeIndexes);
+          } catch (toolError) {
+            console.error('Auto knowledge search failed:', toolError);
+          }
+        }
+
         const res = await api.generate({
           template_id: selectedTemplate.id,
           variables: variableValues,
           model: selectedModel,
           temperature,
-          search_results: selectedTools.includes('web_search') && searchResults.length > 0 ? searchResults : undefined,
-          knowledge_results: selectedTools.includes('knowledge_search') && knowledgeResults.length > 0 ? knowledgeResults : undefined,
+          search_results: selectedTools.includes('web_search')
+            ? resolvedSearchResults.filter((_, index) => resolvedSearchIndexes.includes(index))
+            : undefined,
+          knowledge_results: selectedTools.includes('knowledge_search')
+            ? resolvedKnowledgeResults.filter((_, index) => resolvedKnowledgeIndexes.includes(index))
+            : undefined,
         });
         setResult(res);
       } catch (err) {
-        setError(err.response?.data?.message || '生成失败，请重试');
+        setError(getGenerateErrorMessage(err, '生成失败，请重试'));
       } finally {
         setLoading(false);
       }
@@ -364,6 +449,12 @@ function App() {
 
   const isAgentRunning = agent.status === 'running';
   const showAgentResult = useAgent && (agent.steps.length > 0 || agent.status !== 'idle');
+  const canGenerate = Boolean(selectedTemplate?.id) && !loading && !isAgentRunning;
+  const generateDisabledReason = !selectedTemplate
+    ? '请先从左侧选择一个模板。'
+    : !selectedTemplate.id
+      ? '请先保存当前模板，再执行生成。'
+      : '';
 
   return (
     <div ref={containerRef} className="flex h-screen bg-white overflow-hidden">
@@ -510,8 +601,14 @@ function App() {
                       key={selectedTemplate?.id || 'new'}
                       selectedTools={selectedTools}
                       onToolsChange={handleToolsChange}
-                      onSearchSelectionChange={setSearchResults}
-                      onKnowledgeSelectionChange={setKnowledgeResults}
+                      searchResults={searchResults}
+                      selectedSearchIndexes={selectedSearchIndexes}
+                      onSearchResultsChange={setSearchResults}
+                      onSearchSelectionChange={setSelectedSearchIndexes}
+                      knowledgeResults={knowledgeResults}
+                      selectedKnowledgeIndexes={selectedKnowledgeIndexes}
+                      onKnowledgeResultsChange={setKnowledgeResults}
+                      onKnowledgeSelectionChange={setSelectedKnowledgeIndexes}
                     />
                   )}
 
@@ -519,9 +616,14 @@ function App() {
                     <p className="text-sm text-red-500">{error}</p>
                   )}
 
+                  {!canGenerate && generateDisabledReason && (
+                    <p className="text-sm text-amber-600">{generateDisabledReason}</p>
+                  )}
+
                   <button
                     onClick={handleGenerate}
-                    disabled={loading || isAgentRunning}
+                    disabled={!canGenerate}
+                    title={generateDisabledReason || undefined}
                     className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
                       useAgent
                         ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'

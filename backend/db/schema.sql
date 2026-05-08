@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS prompt_templates (
   system_prompt TEXT NOT NULL,
   user_prompt TEXT NOT NULL,
   variables TEXT NOT NULL,
+  default_tools TEXT NOT NULL DEFAULT '[]',
   version INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -9,6 +9,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatBackendDate } from '../../utils/datetime';
 
 const LEVEL_CONFIG = {
   error: { icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' },
@@ -60,8 +61,7 @@ export default function Logs() {
   };
 
   const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString('zh-CN', {
+    return formatBackendDate(dateStr, {
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',

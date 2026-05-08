@@ -5,3 +5,5 @@ dist/
 *.log
 .DS_Store
 .playwright-mcp/
+backend/data/knowledge/常用工具总结.md
+backend/data/prompt-hub.db

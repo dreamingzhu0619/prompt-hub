@@ -14,6 +14,7 @@ import {
   Loader2,
   MessageSquare,
 } from 'lucide-react';
+import { formatBackendDate } from '../../utils/datetime';
 
 export default function HistoryDetail({ data, loading, onClose, onToggleFavorite }) {
   const [copied, setCopied] = useState(false);
@@ -46,7 +47,7 @@ export default function HistoryDetail({ data, loading, onClose, onToggleFavorite
   }
 
   const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleString('zh-CN');
+    return formatBackendDate(dateStr);
   };
 
   return (

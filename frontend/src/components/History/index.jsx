@@ -11,6 +11,7 @@ import {
 import { api } from '../../services/api';
 import HistoryDetail from './HistoryDetail';
 import CostStats from './CostStats';
+import { formatBackendDate } from '../../utils/datetime';
 
 export default function History() {
   const [history, setHistory] = useState([]);
@@ -88,8 +89,7 @@ export default function History() {
   };
 
   const formatDate = (dateStr) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('zh-CN', {
+    return formatBackendDate(dateStr, {
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
